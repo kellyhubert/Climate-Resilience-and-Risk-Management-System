@@ -90,4 +90,24 @@ class BaseRiskModel:
 
         print(f"Model saved to {filepath}")
 
-    
+    def lead_model(self, filepath):
+        """load trained model from file"""
+        filepath =Path(filepath)
+        if filepath.suffix == '.pkl':
+            with open(filepath, 'rb') as f:
+                model_data = pickle.load(f)
+        elif filepath.suffix == '.joblib':
+            model_data = joblib.load(filepath)
+
+        self.model = model_data['model']
+        self.scaler = model_data.get('scaler', StandardScaler())
+        self.feature_selector = model_data.get('feature_selector', None)
+        self.model_name = model_data['model_name']
+        self.model_type = model_data['model_type']
+        self.features = model_data['features']
+        self.is_trained = model_data['is_trained']
+        self.training_history = model_data.get('training_history', [])
+        self.model_params = model_data.get('model_params', {})
+
+        print(f"Model loaded from: {filepath}")
+        
