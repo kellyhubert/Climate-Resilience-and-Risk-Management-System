@@ -370,3 +370,35 @@ def internal_error(error):
         'status': 'error',
         'message': 'Internal server error'
     }), 500
+
+#startup
+if __name__ == '__main__':
+    print("=" * 60)
+    print("Rwanda Climate Risk Early Warning System - Dashboard")
+    print("=" * 60)
+    
+    # Create necessary directories
+    templates_dir = Path(__file__).parent / 'templates'
+    static_dir = Path(__file__).parent / 'static'
+    templates_dir.mkdir(exist_ok=True)
+    static_dir.mkdir(exist_ok=True)
+
+    #Load models
+    if RwandaLAndslideModel:
+        load_models()
+    elif RwandaFloodModel:
+        load_models()
+    else:
+        print("Running in demo mode - models not available")
+    
+    print("\nStarting Flask server...")
+    print("Dashboard: http://localhost:5000")
+    print("API Status: http://localhost:5000/api/status")
+    print("\nPress Ctrl+C to stop\n")
+
+    # Run the app
+    app.run(
+        host='0.0.0.0',
+        port=5000,
+        debug=True
+    )
