@@ -38,3 +38,41 @@ CORS(app)  # Enable CORS for API access
 app.config['SECRET_KEY'] = 'rwanda-climate-risk-2024'
 app.config['MODELS_DI'] = Path(__file__).parent.parent / 'models'
 
+#Global variables for loaded models
+loaded_models = {
+    'landslide': None,
+    'flood': None,
+    'drought': None,
+    'ensemble': None
+}
+
+#Model Loading
+def load_models():
+    """Load trained models at startup"""
+    global loaded_models
+    
+    print("Loading models...")
+    models_dir = app.config['MODELS_DIR']
+    
+    try:
+        # Try to load pre-trained models
+        if (models_dir / 'rwanda_landslide_model.pkl').exists():
+            loaded_models['landslide'] = RwandaLAndslideModel()
+            loaded_models['landslide'].load_model(models_dir / 'rwanda_landslide_model.pkl')
+            print("✓ Landslide model loaded")
+        
+        if (models_dir / 'rwanda_flood_model.pkl').exists():
+            loaded_models['flood'] = RwandaFloodModel()
+            loaded_models['flood'].load_model(models_dir / 'rwanda_flood_model.pkl')
+            print("✓ Flood model loaded")
+        
+        if (models_dir / 'rwanda_drought_model.pkl').exists():
+            loaded_models['drought'] = RwandaDroughtModel()
+            loaded_models['drought'].load_model(models_dir / 'rwanda_drought_model.pkl')
+            print("✓ Drought model loaded")
+        
+        print("Models loaded successfully!")
+        
+    except Exception as e:
+        print(f"Warning: Could not load models: {e}")
+        print("Running in demo mode with simulated data")
