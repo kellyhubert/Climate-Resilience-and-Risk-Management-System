@@ -154,3 +154,31 @@ def generate_demo_weather():
         })
     
     return weather
+
+#Routes Pages
+
+@app.route('/')
+def index():
+    """Main dashboard page"""
+    return render_template('index.html')
+
+@app.route('/map')
+def risk_map():
+    """Interactive risk map page"""
+    return render_template('map.html')
+
+@app.route('/alerts')
+def alerts_page():
+    """Alerts management page"""
+    return render_template('alerts.html')
+
+@app.route('/analytics')
+def analytics():
+    """Analytics and reports page"""
+    return render_template('analytics.html')
+
+@app.route('/predict')
+def predict_page():
+    """Risk prediction tool page"""
+    return render_template('predict.html')
+
