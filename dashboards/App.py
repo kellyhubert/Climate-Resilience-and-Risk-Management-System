@@ -182,3 +182,173 @@ def predict_page():
     """Risk prediction tool page"""
     return render_template('predict.html')
 
+#Demo Data
+@app.route('/api/status')
+def api_status():
+    """Get system status"""
+    return jsonify({
+        'status': 'operational',
+        'timestamp': datetime.now().isoformat(),
+        'models_loaded': {
+            'landslide': loaded_models['landslide'] is not None,
+            'flood': loaded_models['flood'] is not None,
+            'drought': loaded_models['drought'] is not None
+        },
+        'version': '1.0.0'
+    })
+
+@app.route('/api/current-risks')
+def api_current_risks():
+    """Get current risk levels for all districts"""
+    risks = generate_demo_risk_data()
+    
+    return jsonify({
+        'status': 'success',
+        'timestamp': datetime.now().isoformat(),
+        'data': risks,
+        'summary': {
+            'high_risk_districts': len([r for r in risks if r['landslide_risk'] in ['High', 'Critical']]),
+            'total_districts': len(risks)
+        }
+    })
+
+@app.route('/api/alerts')
+def api_alerts():
+    """Get current active alerts"""
+    alerts = generate_demo_alerts()
+    
+    # Filter by severity if requested
+    severity = request.args.get('severity')
+    if severity:
+        alerts = [a for a in alerts if a['severity'] == severity]
+    
+    return jsonify({
+        'status': 'success',
+        'timestamp': datetime.now().isoformat(),
+        'count': len(alerts),
+        'alerts': alerts
+    })
+
+@app.route('/api/weather')
+def api_weather():
+    """Get current weather data"""
+    weather = generate_demo_weather()
+    
+    return jsonify({
+        'status': 'success',
+        'timestamp': datetime.now().isoformat(),
+        'stations': weather
+    })
+
+@app.route('/api/predict', methods=['POST'])
+def api_predict():
+    """Make risk prediction for given features"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'status': 'error', 'message': 'No data provided'}), 400
+        
+        results = {}
+
+        # Landslide prediction
+        if 'elevation_m' in data and loaded_models['landslide']:
+            try:
+                results['landslide'] = loaded_models['landslide'].predict_risk_level(data)
+            except Exception as e:
+                results['landslide'] = {'error': str(e)}
+
+        # Flood prediction
+        if 'rainfall_1h_mm' in data and loaded_models['flood']:
+            try:
+                results['flood'] = loaded_models['flood'].predict_risk_level(data)
+            except Exception as e:
+                results['flood'] = {'error': str(e)}
+
+        # Drought prediction
+        if 'spi_3month' in data and loaded_models['drought']:
+            try:
+                results['drought'] = loaded_models['drought'].predict_risk_level(data)
+            except Exception as e:
+                results['drought'] = {'error': str(e)}
+        
+        if not results:
+            return jsonify({
+                'status': 'error',
+                'message': 'Insufficient data for prediction. Models not loaded or required features missing.'
+            }), 400
+        
+        return jsonify({
+            'status': 'success',
+            'timestamp': datetime.now().isoformat(),
+            'predictions': results
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+    
+@app.route('/api/historical-data')
+def api_historical_data():
+    """Get historical risk data for charts"""
+    # Generate sample time series data
+    days = 30
+    dates = [(datetime.now() - timedelta(days=x)).strftime('%Y-%m-%d') for x in range(days, 0, -1)]
+    
+    data = {
+        'dates': dates,
+        'landslide_risk': [np.random.uniform(0.2, 0.8) for _ in range(days)],
+        'flood_risk': [np.random.uniform(0.1, 0.7) for _ in range(days)],
+        'drought_risk': [np.random.uniform(0.15, 0.6) for _ in range(days)],
+        'rainfall': [np.random.gamma(2, 10) for _ in range(days)]
+    }
+    
+    return jsonify({
+        'status': 'success',
+        'data': data
+    })
+
+@app.route('/api/districts')
+def api_districts():
+    """Get list of all districts with metadata"""
+    districts = [
+        {'name': 'Kigali', 'province': 'Kigali City', 'population': 1329830},
+        {'name': 'Gasabo', 'province': 'Kigali City', 'population': 529561},
+        {'name': 'Kicukiro', 'province': 'Kigali City', 'population': 491731},
+        {'name': 'Nyarugenge', 'province': 'Kigali City', 'population': 374319},
+        {'name': 'Musanze', 'province': 'Northern', 'population':  476520},
+        {'name': 'Burera', 'province': 'Northern', 'population': 387729},
+        {'name': 'Gicumbi', 'province': 'Northern', 'population': 448824},
+        {'name': 'Nyaruguru', 'province': 'Southern', 'population': 318126},
+        {'name': 'Kirehe', 'province': 'Eastern', 'population': 460860},
+        {'name': 'Rubavu', 'province': 'Western', 'population': 407406}
+    ]
+    
+    return jsonify({
+        'status': 'success',
+        'count': len(districts),
+        'districts': districts
+    })
+
+@app.route('/api/statistics')
+def api_statistics():
+    """Get system statistics"""
+    stats = {
+        'total_predictions': np.random.randint(1000, 5000),
+        'alerts_generated_today': np.random.randint(5, 20),
+        'districts_monitored': 30,
+        'weather_stations': 5,
+        'model_accuracy': {
+            'landslide': 0.87,
+            'flood': 0.84,
+            'drought': 0.82
+        },
+        'last_update': datetime.now().isoformat()
+    }
+    
+    return jsonify({
+        'status': 'success',
+        'statistics': stats
+    })
