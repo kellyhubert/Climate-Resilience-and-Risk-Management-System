@@ -27,5 +27,14 @@ except ImportError:
     RwandaLAndslideModel = None
     RwandaFloodModel = None
     RwandaDroughtModel = None
-    RwandaMultiHazardModel = None
+    RwandaEnsembleModel = None
     BaseRiskModel = None
+
+# Initialize Flask app
+app = Flask(__name__)
+CORS(app)  # Enable CORS for API access
+
+# configuration
+app.config['SECRET_KEY'] = 'rwanda-climate-risk-2024'
+app.config['MODELS_DI'] = Path(__file__).parent.parent / 'models'
+
