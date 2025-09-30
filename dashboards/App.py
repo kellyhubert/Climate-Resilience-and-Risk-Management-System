@@ -11,3 +11,21 @@ import json
 from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
+
+# Add parent directory to path to import models
+sys.path.append(str(Path(__file__).parent.parent))
+
+try:
+    from models.flood_model import RwandaFloodModel
+    from models.drought_model import RwandaDroughtModel
+    from models.landslide_model import RwandaLAndslideModel
+    from models.ensemble_model import RwandaEnsembleModel
+    from models.base_model import BaseRiskModel
+except ImportError:
+    print("Warning: Could not import models. Running in demo mode.")
+
+    RwandaLAndslideModel = None
+    RwandaFloodModel = None
+    RwandaDroughtModel = None
+    RwandaMultiHazardModel = None
+    BaseRiskModel = None
