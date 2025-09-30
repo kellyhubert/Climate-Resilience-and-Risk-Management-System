@@ -352,3 +352,21 @@ def api_statistics():
         'status': 'success',
         'statistics': stats
     })
+
+#Error Handlers
+
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors"""
+    return jsonify({
+        'status': 'error',
+        'message': 'Resource not found'
+    }), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors"""
+    return jsonify({
+        'status': 'error',
+        'message': 'Internal server error'
+    }), 500
