@@ -76,3 +76,81 @@ def load_models():
     except Exception as e:
         print(f"Warning: Could not load models: {e}")
         print("Running in demo mode with simulated data")
+
+#Demo data Generation
+def generate_demo_risk_data():
+        """Generate demo risk data for visualization"""
+        districts = [
+        'Kigali', 'Gasabo', 'Kicukiro', 'Nyarugenge',
+        'Musanze', 'Burera', 'Gicumbi', 'Rulindo',
+        'Nyaruguru', 'Gisagara', 'Nyamagabe', 'Muhanga',
+        'Kirehe', 'Gatsibo', 'Kayonza', 'Ngoma',
+        'Rubavu', 'Nyabihu', 'Ngororero', 'Rusizi'
+         ]
+        risks = []
+        for district in districts:
+            risks.append({
+            'district': district,
+            'landslide_risk': np.random.choice(['Low', 'Medium', 'High', 'Critical'], 
+                                              p=[0.5, 0.3, 0.15, 0.05]),
+            'flood_risk': np.random.choice(['Low', 'Medium', 'High', 'Critical'], 
+                                          p=[0.4, 0.35, 0.2, 0.05]),
+            'drought_risk': np.random.choice(['Low', 'Medium', 'High', 'Critical'], 
+                                            p=[0.6, 0.25, 0.1, 0.05]),
+            'landslide_prob': np.random.uniform(0.1, 0.9),
+            'flood_prob': np.random.uniform(0.1, 0.8),
+            'drought_prob': np.random.uniform(0.1, 0.7)
+        })
+    
+        return risks
+
+def generate_demo_alerts():
+    """Generate demo alerts"""
+    alerts = [
+        {
+            'id': 'LS_001',
+            'type': 'landslide',
+            'severity': 'High',
+            'district': 'Musanze',
+            'message': 'Heavy rainfall detected. High landslide risk in mountainous areas.',
+            'timestamp': (datetime.now() - timedelta(hours=2)).isoformat(),
+            'affected_population': 15000
+        },
+        {
+            'id': 'FL_002',
+            'type': 'flood',
+            'severity': 'Medium',
+            'district': 'Kigali',
+            'message': 'Urban flooding possible in low-lying areas. Monitor Nyabugogo wetlands.',
+            'timestamp': (datetime.now() - timedelta(hours=5)).isoformat(),
+            'affected_population': 25000
+        },
+        {
+            'id': 'DR_003',
+            'type': 'drought',
+            'severity': 'Medium',
+            'district': 'Kirehe',
+            'message': 'Below-average rainfall for Season C. Implement water conservation.',
+            'timestamp': (datetime.now() - timedelta(days=1)).isoformat(),
+            'affected_population': 50000
+        }
+    ]
+    
+    return alerts
+
+def generate_demo_weather():
+    """Generate demo weather data"""
+    stations = ['Kigali Airport', 'Butare', 'Ruhengeri', 'Cyangugu', 'Kibungo']
+    
+    weather = []
+    for station in stations:
+        weather.append({
+            'station': station,
+            'temperature': round(20 + np.random.uniform(-5, 10), 1),
+            'humidity': round(np.random.uniform(60, 95), 0),
+            'rainfall_24h': round(np.random.gamma(2, 8), 1),
+            'wind_speed': round(np.random.uniform(0, 15), 1),
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    return weather
