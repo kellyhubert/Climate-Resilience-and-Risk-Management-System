@@ -11,34 +11,41 @@ import json
 from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
+import requests
+
+# Configuration
+OPENWEATHER_API_KEY = "YOUR_API_KEY_HERE"  # Get free key from openweathermap.org
+OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
 # Add parent directory to path to import models
-sys.path.append(str(Path(__file__).parent.parent))
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
+models_available = False
 try:
     from models.flood_model import RwandaFloodModel
     from models.drought_model import RwandaDroughtModel
-    from models.landslide_model import RwandaLAndslideModel
-    from models.ensemble_model import RwandaEnsembleModel
+    from models.landslide_model import RwandaLandslideModel 
     from models.base_model import BaseRiskModel
-except ImportError:
-    print("Warning: Could not import models. Running in demo mode.")
-
-    RwandaLAndslideModel = None
+    models_available = True
+    print("✅ Model classes imported successfully")
+except ImportError as e:
+    print(f"⚠️ Warning: Could not import models: {e}")
+    print("Running in demo mode")
+    RwandaLandslideModel = None
     RwandaFloodModel = None
     RwandaDroughtModel = None
-    RwandaEnsembleModel = None
     BaseRiskModel = None
 
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)  # Enable CORS for API access
 
-# configuration
+# Configuration
 app.config['SECRET_KEY'] = 'rwanda-climate-risk-2024'
-app.config['MODELS_DI'] = Path(__file__).parent.parent / 'models'
+app.config['MODELS_DIR'] = project_root / 'models' / 'trained'  # Fixed typo
 
-#Global variables for loaded models
+# Global variables for loaded models
 loaded_models = {
     'landslide': None,
     'flood': None,
@@ -46,50 +53,88 @@ loaded_models = {
     'ensemble': None
 }
 
-#Model Loading
+# ============================================================================
+# MODEL LOADING
+# ============================================================================
+
 def load_models():
     """Load trained models at startup"""
     global loaded_models
     
-    print("Loading models...")
+    if not models_available:
+        print("⚠️ Models not available - running in demo mode")
+        return
+    
+    print("\n" + "=" * 60)
+    print("Loading trained models...")
+    print("=" * 60)
+    
     models_dir = app.config['MODELS_DIR']
     
-    try:
-        # Try to load pre-trained models
-        if (models_dir / 'rwanda_landslide_model.pkl').exists():
-            loaded_models['landslide'] = RwandaLAndslideModel()
-            loaded_models['landslide'].load_model(models_dir / 'rwanda_landslide_model.pkl')
-            print("✓ Landslide model loaded")
-        
-        if (models_dir / 'rwanda_flood_model.pkl').exists():
+    if not models_dir.exists():
+        print(f"❌ Models directory not found: {models_dir}")
+        print("Please run: python scripts/train_all_models.py")
+        return
+    
+    # Load Landslide Model
+    landslide_path = models_dir / 'rwanda_landslide_model.pkl'
+    if landslide_path.exists():
+        try:
+            loaded_models['landslide'] = RwandaLandslideModel()
+            loaded_models['landslide'].load_model(landslide_path)
+            print("✅ Landslide model loaded")
+        except Exception as e:
+            print(f"❌ Error loading landslide model: {e}")
+    else:
+        print(f"⚠️ Landslide model not found: {landslide_path}")
+    
+    # Load Flood Model
+    flood_path = models_dir / 'rwanda_flood_model.pkl'
+    if flood_path.exists():
+        try:
             loaded_models['flood'] = RwandaFloodModel()
-            loaded_models['flood'].load_model(models_dir / 'rwanda_flood_model.pkl')
-            print("✓ Flood model loaded")
-        
-        if (models_dir / 'rwanda_drought_model.pkl').exists():
+            loaded_models['flood'].load_model(flood_path)
+            print("✅ Flood model loaded")
+        except Exception as e:
+            print(f"❌ Error loading flood model: {e}")
+    else:
+        print(f"⚠️ Flood model not found: {flood_path}")
+    
+    # Load Drought Model
+    drought_path = models_dir / 'rwanda_drought_model.pkl'
+    if drought_path.exists():
+        try:
             loaded_models['drought'] = RwandaDroughtModel()
-            loaded_models['drought'].load_model(models_dir / 'rwanda_drought_model.pkl')
-            print("✓ Drought model loaded")
-        
-        print("Models loaded successfully!")
-        
-    except Exception as e:
-        print(f"Warning: Could not load models: {e}")
-        print("Running in demo mode with simulated data")
+            loaded_models['drought'].load_model(drought_path)
+            print("✅ Drought model loaded")
+        except Exception as e:
+            print(f"❌ Error loading drought model: {e}")
+    else:
+        print(f"⚠️ Drought model not found: {drought_path}")
+    
+    # Summary
+    models_loaded = sum(1 for m in loaded_models.values() if m is not None)
+    print("=" * 60)
+    print(f"Models loaded: {models_loaded}/3")
+    print("=" * 60 + "\n")
 
-#Demo data Generation
+# ============================================================================
+# DEMO DATA GENERATION
+# ============================================================================
+
 def generate_demo_risk_data():
-        """Generate demo risk data for visualization"""
-        districts = [
+    """Generate demo risk data for visualization"""
+    districts = [
         'Kigali', 'Gasabo', 'Kicukiro', 'Nyarugenge',
         'Musanze', 'Burera', 'Gicumbi', 'Rulindo',
         'Nyaruguru', 'Gisagara', 'Nyamagabe', 'Muhanga',
         'Kirehe', 'Gatsibo', 'Kayonza', 'Ngoma',
         'Rubavu', 'Nyabihu', 'Ngororero', 'Rusizi'
-         ]
-        risks = []
-        for district in districts:
-            risks.append({
+    ]
+    
+    risks = []
+    for district in districts:
+        risks.append({
             'district': district,
             'landslide_risk': np.random.choice(['Low', 'Medium', 'High', 'Critical'], 
                                               p=[0.5, 0.3, 0.15, 0.05]),
@@ -102,7 +147,7 @@ def generate_demo_risk_data():
             'drought_prob': np.random.uniform(0.1, 0.7)
         })
     
-        return risks
+    return risks
 
 def generate_demo_alerts():
     """Generate demo alerts"""
@@ -139,23 +184,36 @@ def generate_demo_alerts():
     return alerts
 
 def generate_demo_weather():
-    """Generate demo weather data"""
-    stations = ['Kigali Airport', 'Butare', 'Ruhengeri', 'Cyangugu', 'Kibungo']
+    """Generate demo weather data with time-based variation"""
+    stations_info = {
+        'Kigali Airport': {'base_temp': 22, 'base_rain': 10},
+        'Butare': {'base_temp': 20, 'base_rain': 12},
+        'Ruhengeri': {'base_temp': 18, 'base_rain': 15},
+        'Cyangugu': {'base_temp': 23, 'base_rain': 14},
+        'Kibungo': {'base_temp': 24, 'base_rain': 8}
+    }
     
     weather = []
-    for station in stations:
+    current_hour = datetime.now().hour
+    
+    for station, info in stations_info.items():
+        # Temperature varies by time of day
+        temp_variation = 5 * np.sin((current_hour - 14) * np.pi / 12)
+        
         weather.append({
             'station': station,
-            'temperature': round(20 + np.random.uniform(-5, 10), 1),
+            'temperature': round(info['base_temp'] + temp_variation + np.random.uniform(-2, 2), 1),
             'humidity': round(np.random.uniform(60, 95), 0),
-            'rainfall_24h': round(np.random.gamma(2, 8), 1),
+            'rainfall_24h': round(info['base_rain'] + np.random.gamma(1, 3), 1),
             'wind_speed': round(np.random.uniform(0, 15), 1),
             'timestamp': datetime.now().isoformat()
         })
     
     return weather
 
-#Routes Pages
+# ============================================================================
+# ROUTES - PAGES
+# ============================================================================
 
 @app.route('/')
 def index():
@@ -182,7 +240,10 @@ def predict_page():
     """Risk prediction tool page"""
     return render_template('predict.html')
 
-#Demo Data
+# ============================================================================
+# API ROUTES - DATA
+# ============================================================================
+
 @app.route('/api/status')
 def api_status():
     """Get system status"""
@@ -231,13 +292,86 @@ def api_alerts():
 
 @app.route('/api/weather')
 def api_weather():
-    """Get current weather data"""
+    """Get current weather data (demo mode)"""
     weather = generate_demo_weather()
     
     return jsonify({
         'status': 'success',
         'timestamp': datetime.now().isoformat(),
-        'stations': weather
+        'stations': weather,
+        'source': 'Demo Data'
+    })
+
+# ⬇️ NEW ROUTE: REAL-TIME WEATHER ⬇️
+@app.route('/api/weather-realtime')
+def api_weather_realtime():
+    """Get real-time weather from OpenWeatherMap API"""
+    
+    # Rwanda weather stations with coordinates
+    stations = {
+        'Kigali Airport': {'lat': -1.9706, 'lon': 30.1394},
+        'Butare': {'lat': -2.6067, 'lon': 29.7394},
+        'Ruhengeri': {'lat': -1.4994, 'lon': 29.6338},
+        'Cyangugu': {'lat': -2.4843, 'lon': 28.9086},
+        'Kibungo': {'lat': -2.1534, 'lon': 30.7677}
+    }
+    
+    weather_data = []
+    
+    # Check if API key is configured
+    if OPENWEATHER_API_KEY == "YOUR_API_KEY_HERE":
+        print("⚠️ OpenWeatherMap API key not configured. Using demo data.")
+        return api_weather()  # Fallback to demo data
+    
+    for station_name, coords in stations.items():
+        try:
+            # Call OpenWeatherMap API
+            response = requests.get(
+                OPENWEATHER_BASE_URL,
+                params={
+                    'lat': coords['lat'],
+                    'lon': coords['lon'],
+                    'appid': OPENWEATHER_API_KEY,
+                    'units': 'metric'  # Celsius
+                },
+                timeout=5
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                weather_data.append({
+                    'station': station_name,
+                    'temperature': round(data['main']['temp'], 1),
+                    'humidity': data['main']['humidity'],
+                    'rainfall_24h': data.get('rain', {}).get('1h', 0) * 24,  # Estimate 24h from 1h
+                    'wind_speed': round(data['wind']['speed'] * 3.6, 1),  # Convert m/s to km/h
+                    'pressure': data['main']['pressure'],
+                    'description': data['weather'][0]['description'],
+                    'timestamp': datetime.now().isoformat()
+                })
+            else:
+                print(f"API error for {station_name}: {response.status_code}")
+                raise Exception("API request failed")
+                
+        except Exception as e:
+            print(f"Error fetching weather for {station_name}: {e}")
+            # Fallback to demo data for this station
+            weather_data.append({
+                'station': station_name,
+                'temperature': round(20 + np.random.uniform(-5, 10), 1),
+                'humidity': round(np.random.uniform(60, 95), 0),
+                'rainfall_24h': round(np.random.gamma(2, 8), 1),
+                'wind_speed': round(np.random.uniform(0, 15), 1),
+                'timestamp': datetime.now().isoformat(),
+                'note': 'Demo data - API unavailable'
+            })
+    
+    return jsonify({
+        'status': 'success',
+        'timestamp': datetime.now().isoformat(),
+        'stations': weather_data,
+        'source': 'OpenWeatherMap API' if len(weather_data) > 0 else 'Demo Data'
     })
 
 @app.route('/api/predict', methods=['POST'])
@@ -249,34 +383,41 @@ def api_predict():
         if not data:
             return jsonify({'status': 'error', 'message': 'No data provided'}), 400
         
+        # Check if any models are loaded
+        if not any(loaded_models.values()):
+            return jsonify({
+                'status': 'error',
+                'message': 'Models not loaded. Please train models first: python scripts/train_all_models.py'
+            }), 503
+        
         results = {}
 
         # Landslide prediction
-        if 'elevation_m' in data and loaded_models['landslide']:
+        if loaded_models['landslide']:
             try:
                 results['landslide'] = loaded_models['landslide'].predict_risk_level(data)
             except Exception as e:
-                results['landslide'] = {'error': str(e)}
+                results['landslide'] = {'error': f'Landslide prediction failed: {str(e)}'}
+        else:
+            results['landslide'] = {'error': 'Landslide model not loaded'}
 
         # Flood prediction
-        if 'rainfall_1h_mm' in data and loaded_models['flood']:
+        if loaded_models['flood']:
             try:
                 results['flood'] = loaded_models['flood'].predict_risk_level(data)
             except Exception as e:
-                results['flood'] = {'error': str(e)}
+                results['flood'] = {'error': f'Flood prediction failed: {str(e)}'}
+        else:
+            results['flood'] = {'error': 'Flood model not loaded'}
 
         # Drought prediction
-        if 'spi_3month' in data and loaded_models['drought']:
+        if loaded_models['drought']:
             try:
                 results['drought'] = loaded_models['drought'].predict_risk_level(data)
             except Exception as e:
-                results['drought'] = {'error': str(e)}
-        
-        if not results:
-            return jsonify({
-                'status': 'error',
-                'message': 'Insufficient data for prediction. Models not loaded or required features missing.'
-            }), 400
+                results['drought'] = {'error': f'Drought prediction failed: {str(e)}'}
+        else:
+            results['drought'] = {'error': 'Drought model not loaded'}
         
         return jsonify({
             'status': 'success',
@@ -318,7 +459,7 @@ def api_districts():
         {'name': 'Gasabo', 'province': 'Kigali City', 'population': 529561},
         {'name': 'Kicukiro', 'province': 'Kigali City', 'population': 491731},
         {'name': 'Nyarugenge', 'province': 'Kigali City', 'population': 374319},
-        {'name': 'Musanze', 'province': 'Northern', 'population':  476520},
+        {'name': 'Musanze', 'province': 'Northern', 'population': 476520},
         {'name': 'Burera', 'province': 'Northern', 'population': 387729},
         {'name': 'Gicumbi', 'province': 'Northern', 'population': 448824},
         {'name': 'Nyaruguru', 'province': 'Southern', 'population': 318126},
@@ -353,7 +494,9 @@ def api_statistics():
         'statistics': stats
     })
 
-#Error Handlers
+# ============================================================================
+# ERROR HANDLERS
+# ============================================================================
 
 @app.errorhandler(404)
 def not_found(error):
@@ -371,7 +514,10 @@ def internal_error(error):
         'message': 'Internal server error'
     }), 500
 
-#startup
+# ============================================================================
+# STARTUP
+# ============================================================================
+
 if __name__ == '__main__':
     print("=" * 60)
     print("Rwanda Climate Risk Early Warning System - Dashboard")
@@ -383,17 +529,17 @@ if __name__ == '__main__':
     templates_dir.mkdir(exist_ok=True)
     static_dir.mkdir(exist_ok=True)
 
-    #Load models
-    if RwandaLAndslideModel:
-        load_models()
-    elif RwandaFloodModel:
+    # Load models
+    if models_available:
         load_models()
     else:
-        print("Running in demo mode - models not available")
+        print("⚠️ Running in demo mode - models not available")
     
     print("\nStarting Flask server...")
     print("Dashboard: http://localhost:5000")
     print("API Status: http://localhost:5000/api/status")
+    print("API Weather (Demo): http://localhost:5000/api/weather")
+    print("API Weather (Real-time): http://localhost:5000/api/weather-realtime")
     print("\nPress Ctrl+C to stop\n")
 
     # Run the app
