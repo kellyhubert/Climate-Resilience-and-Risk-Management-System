@@ -57,7 +57,7 @@
             width: 100%;
             margin-top: 20px;
         }
-        .btn:hover { background: #5568d3; }
+        .btn:hover { background: #021168; }
         .result {
             margin-top: 30px;
             padding: 20px;
@@ -86,6 +86,14 @@
             font-weight: 600;
         }
         .back-link:hover { text-decoration: underline; }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-weight: 600;
+        }
+        .loading.show { display: block; }
     </style>
 </head>
 <body>
@@ -96,6 +104,27 @@
         <p>Enter location parameters to predict landslide, flood, and drought risks</p>
         
         <form id="prediction-form">
+            <div class="form-group">
+                <label>Location / Region</label>
+                <select id="location" required>
+                    <option value="Central_Plateau">Central Plateau (Kigali)</option>
+                    <option value="Northern_Mountains">Northern Mountains</option>
+                    <option value="Eastern_Hills">Eastern Hills</option>
+                    <option value="Western_Ridges">Western Ridges</option>
+                    <option value="Southern_Valleys">Southern Valleys</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Land Use Type</label>
+                <select id="land_use" required>
+                    <option value="agriculture">Agriculture</option>
+                    <option value="forest">Forest</option>
+                    <option value="urban">Urban</option>
+                    <option value="grassland">Grassland</option>
+                </select>
+            </div>
+            
             <div class="form-group">
                 <label>Elevation (meters)</label>
                 <input type="number" id="elevation_m" value="1500" required>
@@ -134,6 +163,10 @@
             <button type="submit" class="btn">Predict Risk</button>
         </form>
         
+        <div id="loading" class="loading">
+            <p>🔄 Analyzing climate risk factors...</p>
+        </div>
+        
         <div id="result" class="result">
             <h2>Prediction Results</h2>
             <div id="predictions"></div>
@@ -144,14 +177,80 @@
         document.getElementById('prediction-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // Show loading state
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('result').classList.remove('show');
+            
+            // Get form values
+            const rainfall_1h = parseFloat(document.getElementById('rainfall_1h_mm').value);
+            const rainfall_24h = parseFloat(document.getElementById('rainfall_24h_mm').value);
+            const elevation = parseFloat(document.getElementById('elevation_m').value);
+            const slope = parseFloat(document.getElementById('slope_degrees').value);
+            const soil_moisture = parseFloat(document.getElementById('soil_moisture_fraction').value);
+            const ndvi = parseFloat(document.getElementById('ndvi').value);
+            const distance_river = parseFloat(document.getElementById('distance_to_river_m').value);
+            const location = document.getElementById('location').value;
+            const land_use = document.getElementById('land_use').value;
+            
+            // Calculate derived values
+            const rainfall_6h = rainfall_1h * 4;
+            const urbanization = land_use === 'urban' ? 0.7 : (land_use === 'agriculture' ? 0.2 : 0.05);
+            
+            // Build complete feature set with ALL required fields
             const formData = {
-                elevation_m: parseFloat(document.getElementById('elevation_m').value),
-                slope_degrees: parseFloat(document.getElementById('slope_degrees').value),
-                rainfall_24h_mm: parseFloat(document.getElementById('rainfall_24h_mm').value),
-                rainfall_1h_mm: parseFloat(document.getElementById('rainfall_1h_mm').value),
-                distance_to_river_m: parseFloat(document.getElementById('distance_to_river_m').value),
-                soil_moisture_fraction: parseFloat(document.getElementById('soil_moisture_fraction').value),
-                ndvi: parseFloat(document.getElementById('ndvi').value)
+                // Basic geographic features
+                elevation_m: elevation,
+                slope_degrees: slope,
+                distance_to_river_m: distance_river,
+                distance_to_lake_m: 2000,  // Default value
+                
+                // Rainfall features
+                rainfall_1h_mm: rainfall_1h,
+                rainfall_6h_mm: rainfall_6h,
+                rainfall_24h_mm: rainfall_24h,
+                antecedent_rainfall_mm: 30,  // Default 30mm previous week
+                
+                // Soil features
+                soil_moisture_fraction: soil_moisture,
+                soil_saturation_fraction: soil_moisture,  // Use same value
+                
+                // Vegetation
+                ndvi: ndvi,
+                vegetation_cover_fraction: ndvi,  // Use NDVI as vegetation cover
+                
+                // Urban features
+                urbanization_degree: urbanization,
+                impervious_surface_pct: urbanization * 80,
+                drainage_density: 0.5,
+                drainage_condition: 3,  // 1-5 scale, 3 = moderate
+                population_density_per_km2: urbanization * 1000,
+                building_density_per_km2: urbanization * 10,
+                
+                // Categorical features
+                land_use: land_use,
+                location: location,
+                
+                // Drought-specific features (with sensible defaults)
+                month: new Date().getMonth() + 1,
+                spi_3month: 0,
+                spi_6month: 0,
+                spi_12month: 0,
+                current_month_rainfall_mm: rainfall_24h * 2,
+                previous_3month_rainfall_mm: rainfall_24h * 30,
+                previous_6month_rainfall_mm: rainfall_24h * 60,
+                annual_rainfall_mm: 1200,
+                annual_rainfall_normal_mm: 1200,
+                rainfall_deficit_pct: 0,
+                avg_temperature_c: 20,
+                max_temperature_c: 28,
+                temperature_anomaly_c: 0,
+                river_flow_index: 1.0,
+                consecutive_dry_days: 10,
+                crop_stress_days: 5,
+                irrigation_coverage_pct: 20,
+                crop_diversity_index: 0.6,
+                water_storage_capacity: 0.5,
+                climate_zone: 'Central_Moderate'
             };
             
             try {
@@ -163,12 +262,16 @@
                 
                 const data = await response.json();
                 
+                // Hide loading
+                document.getElementById('loading').classList.remove('show');
+                
                 if (data.status === 'success') {
                     displayResults(data.predictions);
                 } else {
-                    alert('Prediction failed: ' + data.message);
+                    alert('Prediction failed: ' + (data.message || 'Unknown error'));
                 }
             } catch (error) {
+                document.getElementById('loading').classList.remove('show');
                 alert('Error making prediction: ' + error.message);
             }
         });
@@ -176,7 +279,8 @@
         function displayResults(predictions) {
             let html = '';
             
-            if (predictions.landslide) {
+            // Check if predictions exist and have required properties
+            if (predictions.landslide && predictions.landslide.risk_level) {
                 html += `
                     <div style="margin-bottom: 15px;">
                         <strong>🏔️ Landslide Risk:</strong>
@@ -189,7 +293,7 @@
                 `;
             }
             
-            if (predictions.flood) {
+            if (predictions.flood && predictions.flood.risk_level) {
                 html += `
                     <div style="margin-bottom: 15px;">
                         <strong>🌊 Flood Risk:</strong>
@@ -202,7 +306,7 @@
                 `;
             }
             
-            if (predictions.drought) {
+            if (predictions.drought && predictions.drought.risk_level) {
                 html += `
                     <div style="margin-bottom: 15px;">
                         <strong>☀️ Drought Risk:</strong>
@@ -213,6 +317,10 @@
                         <small>Probability: ${(predictions.drought.probability * 100).toFixed(1)}%</small>
                     </div>
                 `;
+            }
+            
+            if (html === '') {
+                html = '<p style="color: #e53e3e;">No predictions available. Please check if models are trained.</p>';
             }
             
             document.getElementById('predictions').innerHTML = html;
