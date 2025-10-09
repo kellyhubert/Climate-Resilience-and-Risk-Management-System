@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Prediction Tool - Rwanda Climate Risk System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        p { color: #718096; margin-bottom: 30px; }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .btn:hover { background: #5568d3; }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 10px;
+            display: none;
+        }
+        .result.show { display: block; }
+        .result h2 { color: #2d3748; margin-bottom: 15px; }
+        .risk-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            margin: 5px 0;
+        }
+        .risk-low { background: #d1fae5; color: #065f46; }
+        .risk-medium { background: #fef3c7; color: #92400e; }
+        .risk-high { background: #fee2e2; color: #991b1b; }
+        .risk-critical { background: #7c2d12; color: white; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Dashboard</a>
+        
+        <h1>Climate Risk Prediction Tool</h1>
+        <p>Enter location parameters to predict landslide, flood, and drought risks</p>
+        
+        <form id="prediction-form">
+            <div class="form-group">
+                <label>Elevation (meters)</label>
+                <input type="number" id="elevation_m" value="1500" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Slope (degrees)</label>
+                <input type="number" id="slope_degrees" value="25" step="0.1" required>
+            </div>
+            
+            <div class="form-group">
+                <label>24-hour Rainfall (mm)</label>
+                <input type="number" id="rainfall_24h_mm" value="45" step="0.1" required>
+            </div>
+            
+            <div class="form-group">
+                <label>1-hour Rainfall (mm)</label>
+                <input type="number" id="rainfall_1h_mm" value="10" step="0.1" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Distance to River (meters)</label>
+                <input type="number" id="distance_to_river_m" value="500" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Soil Moisture (0-1)</label>
+                <input type="number" id="soil_moisture_fraction" value="0.6" step="0.01" min="0" max="1" required>
+            </div>
+            
+            <div class="form-group">
+                <label>NDVI (Vegetation Index, 0-1)</label>
+                <input type="number" id="ndvi" value="0.5" step="0.01" min="0" max="1" required>
+            </div>
+            
+            <button type="submit" class="btn">Predict Risk</button>
+        </form>
+        
+        <div id="result" class="result">
+            <h2>Prediction Results</h2>
+            <div id="predictions"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('prediction-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                elevation_m: parseFloat(document.getElementById('elevation_m').value),
+                slope_degrees: parseFloat(document.getElementById('slope_degrees').value),
+                rainfall_24h_mm: parseFloat(document.getElementById('rainfall_24h_mm').value),
+                rainfall_1h_mm: parseFloat(document.getElementById('rainfall_1h_mm').value),
+                distance_to_river_m: parseFloat(document.getElementById('distance_to_river_m').value),
+                soil_moisture_fraction: parseFloat(document.getElementById('soil_moisture_fraction').value),
+                ndvi: parseFloat(document.getElementById('ndvi').value)
+            };
+            
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    displayResults(data.predictions);
+                } else {
+                    alert('Prediction failed: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error making prediction: ' + error.message);
+            }
+        });
+        
+        function displayResults(predictions) {
+            let html = '';
+            
+            if (predictions.landslide) {
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <strong>🏔️ Landslide Risk:</strong>
+                        <span class="risk-badge risk-${predictions.landslide.risk_level.toLowerCase()}">
+                            ${predictions.landslide.risk_level}
+                        </span>
+                        <br>
+                        <small>Probability: ${(predictions.landslide.probability * 100).toFixed(1)}%</small>
+                    </div>
+                `;
+            }
+            
+            if (predictions.flood) {
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <strong>🌊 Flood Risk:</strong>
+                        <span class="risk-badge risk-${predictions.flood.risk_level.toLowerCase()}">
+                            ${predictions.flood.risk_level}
+                        </span>
+                        <br>
+                        <small>Probability: ${(predictions.flood.probability * 100).toFixed(1)}%</small>
+                    </div>
+                `;
+            }
+            
+            if (predictions.drought) {
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <strong>☀️ Drought Risk:</strong>
+                        <span class="risk-badge risk-${predictions.drought.risk_level.toLowerCase()}">
+                            ${predictions.drought.risk_level}
+                        </span>
+                        <br>
+                        <small>Probability: ${(predictions.drought.probability * 100).toFixed(1)}%</small>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('predictions').innerHTML = html;
+            document.getElementById('result').classList.add('show');
+        }
+    </script>
+</body>
+</html>
