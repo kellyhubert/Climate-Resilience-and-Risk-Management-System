@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Map - Rwanda Climate Risk System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        h1 { color: #2d3748; margin-bottom: 5px; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 10px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .map-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            height: 700px;
+        }
+        #map {
+            height: 100%;
+            border-radius: 10px;
+        }
+        .sidebar {
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .legend {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .legend h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .district-list {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .district-list h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .district-item {
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border-left: 4px solid #e2e8f0;
+        }
+        .district-item:hover {
+            background: #edf2f7;
+        }
+        .district-item.high { border-left-color: #ef4444; }
+        .district-item.medium { border-left-color: #f59e0b; }
+        .district-item.low { border-left-color: #10b981; }
+        .district-name {
+            font-weight: 600;
+            color: #2d3748;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .district-risk {
+            font-size: 12px;
+            color: #718096;
+        }
+        .filters {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .filter-btn {
+            padding: 8px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .filter-btn.active { background: #667eea; color: white; }
+        .filter-btn:not(.active) { background: white; color: #2d3748; }
+        @media (max-width: 968px) {
+            .map-container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            #map { height: 500px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/" class="back-link">← Back to Dashboard</a>
+            <h1>Interactive Risk Map</h1>
+            <p style="color: #718096;">Real-time climate risk visualization across Rwanda</p>
+        </div>
+
+        <div class="map-container">
+            <div class="sidebar">
+                <div class="filters">
+                    <h3 style="color: #2d3748; margin-bottom: 10px;">Hazard Type</h3>
+                    <button class="filter-btn active" onclick="filterHazard('all')">All Hazards</button>
+                    <button class="filter-btn" onclick="filterHazard('landslide')">Landslide</button>
+                    <button class="filter-btn" onclick="filterHazard('flood')">Flood</button>
+                    <button class="filter-btn" onclick="filterHazard('drought')">Drought</button>
+                </div>
+
+                <div class="legend">
+                    <h3>Risk Levels</h3>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #10b981;"></div>
+                        <span>Low Risk</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f59e0b;"></div>
+                        <span>Medium Risk</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ef4444;"></div>
+                        <span>High Risk</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #7c2d12;"></div>
+                        <span>Critical Risk</span>
+                    </div>
+                </div>
+
+                <div class="district-list">
+                    <h3>Districts</h3>
+                    <div id="district-list-content">Loading...</div>
+                </div>
+            </div>
+
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let markers = [];
+        let currentFilter = 'all';
+
+        // Rwanda districts with approximate coordinates
+        const districts = [
+            { name: 'Kigali', lat: -1.9536, lon: 30.0606, province: 'Kigali City' },
+            { name: 'Gasabo', lat: -1.8895, lon: 30.1303, province: 'Kigali City' },
+            { name: 'Kicukiro', lat: -1.9857, lon: 30.1025, province: 'Kigali City' },
+            { name: 'Nyarugenge', lat: -1.9705, lon: 30.0588, province: 'Kigali City' },
+            { name: 'Musanze', lat: -1.4994, lon: 29.6338, province: 'Northern' },
+            { name: 'Burera', lat: -1.5311, lon: 29.8533, province: 'Northern' },
+            { name: 'Gicumbi', lat: -1.6411, lon: 30.0506, province: 'Northern' },
+            { name: 'Rulindo', lat: -1.7703, lon: 30.0597, province: 'Northern' },
+            { name: 'Nyaruguru', lat: -2.5906, lon: 29.5447, province: 'Southern' },
+            { name: 'Gisagara', lat: -2.5589, lon: 29.8142, province: 'Southern' },
+            { name: 'Muhanga', lat: -2.0861, lon: 29.7503, province: 'Southern' },
+            { name: 'Nyanza', lat: -2.3506, lon: 29.7506, province: 'Southern' },
+            { name: 'Kirehe', lat: -2.1534, lon: 30.7677, province: 'Eastern' },
+            { name: 'Gatsibo', lat: -1.6283, lon: 30.4142, province: 'Eastern' },
+            { name: 'Kayonza', lat: -1.8889, lon: 30.4239, province: 'Eastern' },
+            { name: 'Ngoma', lat: -2.1442, lon: 30.5075, province: 'Eastern' },
+            { name: 'Rubavu', lat: -1.6792, lon: 29.2603, province: 'Western' },
+            { name: 'Nyabihu', lat: -1.6539, lon: 29.5008, province: 'Western' },
+            { name: 'Ngororero', lat: -1.8806, lon: 29.5742, province: 'Western' },
+            { name: 'Rusizi', lat: -2.4843, lon: 28.9086, province: 'Western' }
+        ];
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([-1.9403, 29.8739], 9);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            loadRiskData();
+        }
+
+        // Load risk data and display markers
+        async function loadRiskData() {
+            try {
+                const response = await fetch('/api/current-risks');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    displayMarkers(data.data);
+                    displayDistrictList(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading risk data:', error);
+            }
+        }
+
+        function displayMarkers(riskData) {
+            // Clear existing markers
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            districts.forEach(district => {
+                const districtRisk = riskData.find(r => r.district === district.name) || {
+                    landslide_risk: 'Low',
+                    flood_risk: 'Low',
+                    drought_risk: 'Low'
+                };
+
+                const maxRisk = getMaxRisk(districtRisk);
+                const color = getRiskColor(maxRisk);
+
+                const marker = L.circleMarker([district.lat, district.lon], {
+                    radius: 10,
+                    fillColor: color,
+                    color: 'white',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+
+                marker.bindPopup(`
+                    <strong>${district.name}</strong><br>
+                    Province: ${district.province}<br>
+                    <br>
+                    Landslide: ${districtRisk.landslide_risk}<br>
+                    Flood: ${districtRisk.flood_risk}<br>
+                    Drought: ${districtRisk.drought_risk}
+                `);
+
+                markers.push(marker);
+            });
+        }
+
+        function displayDistrictList(riskData) {
+            const html = districts.map(district => {
+                const districtRisk = riskData.find(r => r.district === district.name) || {
+                    landslide_risk: 'Low',
+                    flood_risk: 'Low',
+                    drought_risk: 'Low'
+                };
+
+                const maxRisk = getMaxRisk(districtRisk);
+                const riskClass = maxRisk.toLowerCase();
+
+                return `
+                    <div class="district-item ${riskClass}" onclick="zoomToDistrict(${district.lat}, ${district.lon})">
+                        <span class="district-name">${district.name}</span>
+                        <span class="district-risk">
+                            L: ${districtRisk.landslide_risk[0]}, 
+                            F: ${districtRisk.flood_risk[0]}, 
+                            D: ${districtRisk.drought_risk[0]}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('district-list-content').innerHTML = html;
+        }
+
+        function getMaxRisk(districtRisk) {
+            const risks = [
+                districtRisk.landslide_risk,
+                districtRisk.flood_risk,
+                districtRisk.drought_risk
+            ];
+            
+            if (risks.includes('Critical')) return 'Critical';
+            if (risks.includes('High')) return 'High';
+            if (risks.includes('Medium')) return 'Medium';
+            return 'Low';
+        }
+
+        function getRiskColor(risk) {
+            const colors = {
+                'Low': '#10b981',
+                'Medium': '#f59e0b',
+                'High': '#ef4444',
+                'Critical': '#7c2d12'
+            };
+            return colors[risk] || '#10b981';
+        }
+
+        function zoomToDistrict(lat, lon) {
+            map.setView([lat, lon], 11);
+        }
+
+        function filterHazard(hazard) {
+            currentFilter = hazard;
+            
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Reload markers with filter (simplified for now)
+            loadRiskData();
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            setInterval(loadRiskData, 5 * 60 * 1000); // Refresh every 5 minutes
+        });
+    </script>
+</body>
+</html>
