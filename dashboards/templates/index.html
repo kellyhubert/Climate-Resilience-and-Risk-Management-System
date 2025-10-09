@@ -440,36 +440,67 @@
         }
 
         // Fetch and display risk levels
-        async function fetchRiskLevels() {
-            try {
-                const response = await fetch(`${API_BASE}/api/current-risks`);
-                const data = await response.json();
-                
-                if (data.status === 'success' && data.data.length > 0) {
-                    // Calculate average risks
-                    const riskHTML = `
-                        <div class="risk-item ${getRiskClass(avgLandslide)}">
-                            <span class="risk-name">🏔️ Landslide Risk</span>
-                            <span class="risk-value ${getRiskClass(avgLandslide)}">${getRiskLevel(avgLandslide)}</span>
-                        </div>
-                        <div class="risk-item ${getRiskClass(avgFlood)}">
-                            <span class="risk-name">🌊 Flood Risk</span>
-                            <span class="risk-value ${getRiskClass(avgFlood)}">${getRiskLevel(avgFlood)}</span>
-                        </div>
-                        <div class="risk-item ${getRiskClass(avgDrought)}">
-                            <span class="risk-name">☀️ Drought Risk</span>
-                            <span class="risk-value ${getRiskClass(avgDrought)}">${getRiskLevel(avgDrought)}</span>
-                        </div>
-                    `;
-                    
-                    document.getElementById('risk-levels').innerHTML = riskHTML;
-                }
-            } catch (error) {
-                console.error('Error fetching risks:', error);
-                document.getElementById('risk-levels').innerHTML = 
-                    '<p style="color: #ef4444;">Error loading risk data</p>';
-            }
+        // Fetch and display risk levels
+async function fetchRiskLevels() {
+    try {
+        const response = await fetch(`${API_BASE}/api/current-risks`);
+        const data = await response.json();
+        
+        if (data.status === 'success' && data.data && data.data.length > 0) {
+            // Calculate average risks across all districts
+            const avgLandslide = calculateAvgRisk(data.data, 'landslide_prob');
+            const avgFlood = calculateAvgRisk(data.data, 'flood_prob');
+            const avgDrought = calculateAvgRisk(data.data, 'drought_prob');
+            
+            const riskHTML = `
+                <div class="risk-item ${getRiskClass(avgLandslide)}">
+                    <span class="risk-name">🏔️ Landslide Risk</span>
+                    <span class="risk-value ${getRiskClass(avgLandslide)}">${getRiskLevel(avgLandslide)}</span>
+                </div>
+                <div class="risk-item ${getRiskClass(avgFlood)}">
+                    <span class="risk-name">🌊 Flood Risk</span>
+                    <span class="risk-value ${getRiskClass(avgFlood)}">${getRiskLevel(avgFlood)}</span>
+                </div>
+                <div class="risk-item ${getRiskClass(avgDrought)}">
+                    <span class="risk-name">☀️ Drought Risk</span>
+                    <span class="risk-value ${getRiskClass(avgDrought)}">${getRiskLevel(avgDrought)}</span>
+                </div>
+            `;
+            
+            document.getElementById('risk-levels').innerHTML = riskHTML;
+        } else {
+            throw new Error('No risk data available');
         }
+    } catch (error) {
+        console.error('Error fetching risks:', error);
+        document.getElementById('risk-levels').innerHTML = `
+            <div style="padding: 20px; text-align: center; color: #ef4444;">
+                <p>⚠️ Unable to load risk data</p>
+                <p style="font-size: 12px; margin-top: 5px;">Check console for details</p>
+            </div>
+        `;
+    }
+}
+
+function calculateAvgRisk(data, field) {
+    if (!data || data.length === 0) return 0;
+    const sum = data.reduce((acc, item) => acc + (item[field] || 0), 0);
+    return sum / data.length;
+}
+
+function getRiskLevel(probability) {
+    if (probability < 0.25) return 'Low';
+    if (probability < 0.5) return 'Medium';
+    if (probability < 0.75) return 'High';
+    return 'Critical';
+}
+
+function getRiskClass(probability) {
+    if (probability < 0.25) return 'low';
+    if (probability < 0.5) return 'medium';
+    if (probability < 0.75) return 'high';
+    return 'critical';
+}
 
         // Fetch and display alerts
         async function fetchAlerts() {
