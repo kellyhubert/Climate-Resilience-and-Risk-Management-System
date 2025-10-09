@@ -5,13 +5,14 @@ This module implements a machine learning model to predict flood risk in Rwanda
 based on rainfall patterns, topography, drainage systems, and urbanization factors.
 """
 from datetime import datetime
+import random
+import numpy as np
 import pandas as pd
-from sklearn.calibration import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.model_selection import cross_val_score, train_test_split
-from base_model import BaseRiskModel
-import numpy as np
+from .base_model import BaseRiskModel
 
 class RwandaFloodModel(BaseRiskModel):
     """Advanced flood risk prediction model for Rwanda"""
@@ -25,8 +26,24 @@ class RwandaFloodModel(BaseRiskModel):
         """
         super().__init__("Rwanda_Flood_Model", "classification")
         self.algorithm = model_algorithm
+        
+        # Initialize preprocessing components
+        self.scaler = StandardScaler()
+        self.feature_selector = None
+        
+        # Setup Rwanda-specific parameters
         self.rwanda_params = self._setup_rwanda_parameters()
+        
+        # Initialize the ML model
         self._initialize_model()
+        
+        # Store model parameters for saving/loading
+        self.model_params = {
+            'algorithm': self.algorithm,
+            'rwanda_specific_params': self.rwanda_params,
+            'model_type': 'flood_risk',
+            'version': '1.0'
+        }
     
     def _setup_rwanda_parameters(self):
         """Rwanda-specific flood parameters based on local conditions"""
@@ -90,8 +107,8 @@ class RwandaFloodModel(BaseRiskModel):
         }
         
         for i in range(n_samples):
-            # Select location
-            location_name, location_params = np.random.choice(list(locations.items()))
+            # Select location - FIX: Use random.choice instead of np.random.choice
+            location_name, location_params = random.choice(list(locations.items()))
             
             # Geographic features
             elevation = np.random.normal(location_params['elevation'], 100)
@@ -185,46 +202,46 @@ class RwandaFloodModel(BaseRiskModel):
         prob = 0.0
         
         # Rainfall intensity factors (primary trigger)
-        rainfall_1h_factor = min(1.0, features['rainfall_1h'] / 30)
-        rainfall_6h_factor = min(1.0, features['rainfall_6h'] / 80)
-        rainfall_24h_factor = min(1.0, features['rainfall_24h'] / 150)
+        rainfall_1h_factor = np.clip(features['rainfall_1h'] / 30, 0, 1)
+        rainfall_6h_factor = np.clip(features['rainfall_6h'] / 80, 0, 1)
+        rainfall_24h_factor = np.clip(features['rainfall_24h'] / 150, 0, 1)
         
         # Use the most critical rainfall metric
-        max_rainfall_factor = max(rainfall_1h_factor, rainfall_6h_factor * 0.8, rainfall_24h_factor * 0.6)
-        prob += max_rainfall_factor * 0.30
+        max_rainfall_factor = np.maximum(rainfall_1h_factor, np.maximum(rainfall_6h_factor * 0.8, rainfall_24h_factor * 0.6))
+        prob += float(max_rainfall_factor) * 0.30
         
         # Topographic factors
-        elevation_factor = max(0, (1800 - features['elevation']) / 800)  # Lower = more prone
-        slope_factor = max(0, (20 - features['slope']) / 20)  # Flatter = more prone
-        prob += elevation_factor * 0.15
-        prob += slope_factor * 0.10
+        elevation_factor = np.clip((1800 - features['elevation']) / 800, 0, 1)  # Lower = more prone
+        slope_factor = np.clip((20 - features['slope']) / 20, 0, 1)  # Flatter = more prone
+        prob += float(elevation_factor) * 0.15
+        prob += float(slope_factor) * 0.10
         
         # Proximity to water bodies
         river_factor = 1 / (1 + features['distance_to_river'] / 200)
         lake_factor = 1 / (1 + features['distance_to_lake'] / 1000)
-        prob += max(river_factor, lake_factor * 0.5) * 0.10
+        prob += float(np.maximum(river_factor, lake_factor * 0.5)) * 0.10
         
         # Urban drainage factors
-        urbanization_factor = features['urbanization_degree']
-        impervious_factor = features['impervious_surface_pct'] / 100
-        drainage_factor = 1 - features['drainage_condition']  # Poor drainage = higher risk
+        urbanization_factor = float(features['urbanization_degree'])
+        impervious_factor = float(features['impervious_surface_pct']) / 100
+        drainage_factor = float(1 - features['drainage_condition'])  # Poor drainage = higher risk
         
         prob += urbanization_factor * 0.10
         prob += impervious_factor * 0.08
         prob += drainage_factor * 0.07
         
         # Antecedent conditions
-        saturation_factor = max(0, (features['soil_saturation'] - 0.5) / 0.4)
+        saturation_factor = float(np.clip((features['soil_saturation'] - 0.5) / 0.4, 0, 1))
         prob += saturation_factor * 0.05
         
         # Vegetation factor (less vegetation = higher runoff)
-        vegetation_factor = max(0, (0.7 - features['vegetation_cover']) / 0.7)
+        vegetation_factor = float(np.clip((0.7 - features['vegetation_cover']) / 0.7, 0, 1))
         prob += vegetation_factor * 0.05
         
         # Location base risk
-        prob += features['location_flood_risk'] * 0.05
+        prob += float(features['location_flood_risk']) * 0.05
         
-        return np.clip(prob, 0, 1)
+        return float(np.clip(prob, 0, 1))
     
     def prepare_data(self, data):
         """
@@ -341,14 +358,14 @@ class RwandaFloodModel(BaseRiskModel):
             print("\nTop 10 Most Important Features:")
             print(feature_importance.head(10))
         
-        # Store training results
+        # Store training results - FIX: Use len() for array check
         training_result = {
             'timestamp': datetime.now(),
             'algorithm': self.algorithm,
             'train_accuracy': train_score,
             'test_accuracy': test_score,
-            'cv_mean': np.mean(cv_scores) if cv_scores else None,
-            'cv_std': np.std(cv_scores) if cv_scores else None,
+            'cv_mean': np.mean(cv_scores) if len(cv_scores) > 0 else None,
+            'cv_std': np.std(cv_scores) if len(cv_scores) > 0 else None,
             'n_features': X_train_selected.shape[1],
             'n_samples': X_train_selected.shape[0]
         }
@@ -358,7 +375,7 @@ class RwandaFloodModel(BaseRiskModel):
         print(f"\n✓ Training Results:")
         print(f"  Training Accuracy: {train_score:.3f}")
         print(f"  Test Accuracy: {test_score:.3f}")
-        if cv_scores:
+        if len(cv_scores) > 0:
             print(f"  CV Score: {np.mean(cv_scores):.3f} ± {np.std(cv_scores):.3f}")
         
         return {
