@@ -14,7 +14,7 @@ import pandas as pd
 import requests
 
 # Configuration
-OPENWEATHER_API_KEY = "YOUR_API_KEY_HERE"  # Get free key from openweathermap.org
+OPENWEATHER_API_KEY = "c45952d88bbd1eae279947148383f7d6"  # Get free key from openweathermap.org
 OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
 # Add parent directory to path to import models
@@ -28,9 +28,9 @@ try:
     from models.landslide_model import RwandaLandslideModel 
     from models.base_model import BaseRiskModel
     models_available = True
-    print("✅ Model classes imported successfully")
+    print("[OK] Model classes imported successfully")
 except ImportError as e:
-    print(f"⚠️ Warning: Could not import models: {e}")
+    print(f"[WARNING] Could not import models: {e}")
     print("Running in demo mode")
     RwandaLandslideModel = None
     RwandaFloodModel = None
@@ -62,7 +62,7 @@ def load_models():
     global loaded_models
     
     if not models_available:
-        print("⚠️ Models not available - running in demo mode")
+        print("[WARNING] Models not available - running in demo mode")
         return
     
     print("\n" + "=" * 60)
@@ -72,7 +72,7 @@ def load_models():
     models_dir = app.config['MODELS_DIR']
     
     if not models_dir.exists():
-        print(f"❌ Models directory not found: {models_dir}")
+        print(f"[ERROR] Models directory not found: {models_dir}")
         print("Please run: python scripts/train_all_models.py")
         return
     
@@ -82,11 +82,11 @@ def load_models():
         try:
             loaded_models['landslide'] = RwandaLandslideModel()
             loaded_models['landslide'].load_model(landslide_path)
-            print("✅ Landslide model loaded")
+            print("[OK] Landslide model loaded")
         except Exception as e:
-            print(f"❌ Error loading landslide model: {e}")
+            print(f"[ERROR] Error loading landslide model: {e}")
     else:
-        print(f"⚠️ Landslide model not found: {landslide_path}")
+        print(f"[WARNING] Landslide model not found: {landslide_path}")
     
     # Load Flood Model
     flood_path = models_dir / 'rwanda_flood_model.pkl'
@@ -94,11 +94,11 @@ def load_models():
         try:
             loaded_models['flood'] = RwandaFloodModel()
             loaded_models['flood'].load_model(flood_path)
-            print("✅ Flood model loaded")
+            print("[OK] Flood model loaded")
         except Exception as e:
-            print(f"❌ Error loading flood model: {e}")
+            print(f"[ERROR] Error loading flood model: {e}")
     else:
-        print(f"⚠️ Flood model not found: {flood_path}")
+        print(f"[WARNING] Flood model not found: {flood_path}")
     
     # Load Drought Model
     drought_path = models_dir / 'rwanda_drought_model.pkl'
@@ -106,11 +106,11 @@ def load_models():
         try:
             loaded_models['drought'] = RwandaDroughtModel()
             loaded_models['drought'].load_model(drought_path)
-            print("✅ Drought model loaded")
+            print("[OK] Drought model loaded")
         except Exception as e:
-            print(f"❌ Error loading drought model: {e}")
+            print(f"[ERROR] Error loading drought model: {e}")
     else:
-        print(f"⚠️ Drought model not found: {drought_path}")
+        print(f"[WARNING] Drought model not found: {drought_path}")
     
     # Summary
     models_loaded = sum(1 for m in loaded_models.values() if m is not None)
@@ -302,7 +302,7 @@ def api_weather():
         'source': 'Demo Data'
     })
 
-# ⬇️ NEW ROUTE: REAL-TIME WEATHER ⬇️
+# NEW ROUTE: REAL-TIME WEATHER
 @app.route('/api/weather-realtime')
 def api_weather_realtime():
     """Get real-time weather from OpenWeatherMap API"""
@@ -320,7 +320,7 @@ def api_weather_realtime():
     
     # Check if API key is configured
     if OPENWEATHER_API_KEY == "YOUR_API_KEY_HERE":
-        print("⚠️ OpenWeatherMap API key not configured. Using demo data.")
+        print("[WARNING] OpenWeatherMap API key not configured. Using demo data.")
         return api_weather()  # Fallback to demo data
     
     for station_name, coords in stations.items():
@@ -533,7 +533,7 @@ if __name__ == '__main__':
     if models_available:
         load_models()
     else:
-        print("⚠️ Running in demo mode - models not available")
+        print("[WARNING] Running in demo mode - models not available")
     
     print("\nStarting Flask server...")
     print("Dashboard: http://localhost:5000")
