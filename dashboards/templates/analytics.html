@@ -90,7 +90,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f2f3f7 0%, #f2f0f4 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -257,32 +257,64 @@
                 </div>
             </div>
 
-            <!-- Model Performance -->
+            <!-- Report Generation -->
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">Model Performance</div>
+                    <div class="card-title">Generate Reports</div>
                 </div>
-                <div class="metric-card">
-                    <span class="metric-name">Landslide Model Accuracy</span>
-                    <span class="metric-value high">87%</span>
-                </div>
-                <div class="metric-card">
-                    <span class="metric-name">Flood Model Accuracy</span>
-                    <span class="metric-value high">84%</span>
-                </div>
-                <div class="metric-card">
-                    <span class="metric-name">Drought Model Accuracy</span>
-                    <span class="metric-value high">82%</span>
-                </div>
-                <div class="stats-row" style="margin-top: 20px;">
-                    <div class="stat-box">
-                        <div class="stat-value" id="total-predictions">2,847</div>
-                        <div class="stat-label">Total Predictions</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value" id="accuracy-rate">84.3%</div>
-                        <div class="stat-label">Avg Accuracy</div>
-                    </div>
+                <div style="padding: 20px;">
+                    <p style="color: #718096; margin-bottom: 20px; font-size: 14px;">
+                        Download comprehensive reports with current alert data and weather conditions.
+                    </p>
+
+                    <!-- Excel Report Button -->
+                    <button onclick="downloadExcelReport()" class="report-btn" style="
+                        width: 100%;
+                        padding: 15px;
+                        margin-bottom: 12px;
+                        background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 15px;
+                        font-weight: 600;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        transition: transform 0.2s, box-shadow 0.2s;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.3)';"
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                        <span style="font-size: 20px; margin-bottom: 4px;">📊</span>
+                        <span>Download Excel Report</span>
+                        <small style="font-weight: 400; opacity: 0.9; font-size: 12px; margin-top: 4px;">
+                            Detailed data with weather records
+                        </small>
+                    </button>
+
+                    <!-- PDF Report Button -->
+                    <button onclick="downloadPdfReport()" class="report-btn" style="
+                        width: 100%;
+                        padding: 15px;
+                        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 15px;
+                        font-weight: 600;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        transition: transform 0.2s, box-shadow 0.2s;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.3)';"
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                        <span style="font-size: 20px; margin-bottom: 4px;">📄</span>
+                        <span>Download PDF Summary</span>
+                        <small style="font-weight: 400; opacity: 0.9; font-size: 12px; margin-top: 4px;">
+                            Executive analysis and recommendations
+                        </small>
+                    </button>
                 </div>
             </div>
 
@@ -579,6 +611,15 @@
                     }
                 }
             });
+        }
+
+        // Report Generation Functions
+        function downloadExcelReport() {
+            window.location.href = '/api/generate-excel-report';
+        }
+
+        function downloadPdfReport() {
+            window.location.href = '/api/generate-pdf-report';
         }
 
         function changeTimeRange(range) {

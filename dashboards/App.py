@@ -3,7 +3,7 @@ Rwanda Climate Risk Early Warning System - Web Dashboard.
 This Flask application provides a web interface for monitoring climate risks,
 viewing alerts, and accessing risk predictions for Rwanda.
 """
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file
 from flask_cors import CORS
 from pathlib import Path
 import sys
@@ -13,6 +13,7 @@ import random
 import math
 from datetime import datetime, timedelta
 import requests
+from io import BytesIO
 
 # Try to import numpy (optional)
 try:
@@ -1164,6 +1165,283 @@ def api_alert_activity():
             },
             'mode': 'fallback'
         })
+
+# ============================================================================
+# REPORT GENERATION
+# ============================================================================
+
+@app.route('/api/generate-excel-report')
+def generate_excel_report():
+    """Generate Excel report with alerts and weather data"""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+
+        # Get current alerts
+        alerts = generate_dynamic_alerts()
+
+        # Create workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Climate Risk Report"
+
+        # Header styling
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=12)
+
+        # Define headers
+        headers = ["Date", "Risk Type", "Severity", "District", "Province",
+                   "Temperature (°C)", "Humidity (%)", "Rainfall (mm)", "Wind Speed (m/s)",
+                   "Affected Population", "Message"]
+
+        # Write headers
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        # Write data rows
+        for row_idx, alert in enumerate(alerts, 2):
+            district = alert.get('district', 'Unknown')
+
+            # Get province from district
+            province = RWANDA_DISTRICTS.get(district, {}).get('province', 'Unknown')
+
+            # Fetch weather for this district (if available)
+            temp, humidity, rainfall, wind = "N/A", "N/A", "N/A", "N/A"
+            if district in RWANDA_DISTRICTS:
+                coords = RWANDA_DISTRICTS[district]
+                try:
+                    response = requests.get(
+                        OPENWEATHER_BASE_URL,
+                        params={
+                            'lat': coords['lat'],
+                            'lon': coords['lon'],
+                            'appid': OPENWEATHER_API_KEY,
+                            'units': 'metric'
+                        },
+                        timeout=3
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        temp = round(data['main']['temp'], 1)
+                        humidity = data['main']['humidity']
+                        rainfall = round(data.get('rain', {}).get('1h', 0) * 24, 1)
+                        wind = round(data['wind']['speed'], 1)
+                except:
+                    pass
+
+            # Write row data
+            ws.cell(row=row_idx, column=1, value=alert.get('timestamp', datetime.now().isoformat())[:10])
+            ws.cell(row=row_idx, column=2, value=alert.get('type', 'Unknown').capitalize())
+            ws.cell(row=row_idx, column=3, value=alert.get('severity', 'Low'))
+            ws.cell(row=row_idx, column=4, value=district)
+            ws.cell(row=row_idx, column=5, value=province)
+            ws.cell(row=row_idx, column=6, value=temp)
+            ws.cell(row=row_idx, column=7, value=humidity)
+            ws.cell(row=row_idx, column=8, value=rainfall)
+            ws.cell(row=row_idx, column=9, value=wind)
+            ws.cell(row=row_idx, column=10, value=alert.get('affected_population', 0))
+            ws.cell(row=row_idx, column=11, value=alert.get('message', ''))
+
+            # Color code by severity
+            severity = alert.get('severity', 'Low')
+            if severity == 'Critical':
+                fill_color = "7C2D12"
+            elif severity == 'High':
+                fill_color = "EF4444"
+            elif severity == 'Medium':
+                fill_color = "F59E0B"
+            else:
+                fill_color = "10B981"
+
+            ws.cell(row=row_idx, column=3).fill = PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
+            ws.cell(row=row_idx, column=3).font = Font(bold=True, color="FFFFFF")
+
+        # Adjust column widths
+        column_widths = [12, 12, 12, 15, 15, 15, 12, 14, 16, 18, 50]
+        for col, width in enumerate(column_widths, 1):
+            ws.column_dimensions[chr(64 + col)].width = width
+
+        # Save to BytesIO
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        # Generate filename with timestamp
+        filename = f"Climate_Risk_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        print(f"[ERROR] Excel report generation failed: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Failed to generate Excel report: {str(e)}'
+        }), 500
+
+@app.route('/api/generate-pdf-report')
+def generate_pdf_report():
+    """Generate PDF summary report"""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+        # Get data
+        alerts = generate_dynamic_alerts()
+
+        # Count by severity and type
+        severity_counts = {'Critical': 0, 'High': 0, 'Medium': 0, 'Low': 0}
+        type_counts = {}
+
+        for alert in alerts:
+            severity = alert.get('severity', 'Low')
+            if severity in severity_counts:
+                severity_counts[severity] += 1
+
+            risk_type = alert.get('type', 'unknown').capitalize()
+            type_counts[risk_type] = type_counts.get(risk_type, 0) + 1
+
+        # Create PDF
+        output = BytesIO()
+        doc = SimpleDocTemplate(output, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+
+        # Container for the 'Flowable' objects
+        elements = []
+
+        # Styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=24, textColor=colors.HexColor('#2d3748'), spaceAfter=30, alignment=TA_CENTER)
+        heading_style = ParagraphStyle('CustomHeading', parent=styles['Heading2'], fontSize=16, textColor=colors.HexColor('#4472C4'), spaceAfter=12)
+        normal_style = styles['Normal']
+
+        # Title
+        title = Paragraph("Rwanda Climate Risk Early Warning System", title_style)
+        subtitle = Paragraph(f"<b>Analysis Report - {datetime.now().strftime('%B %d, %Y')}</b>", normal_style)
+        elements.append(title)
+        elements.append(subtitle)
+        elements.append(Spacer(1, 0.3*inch))
+
+        # Executive Summary
+        elements.append(Paragraph("Executive Summary", heading_style))
+        summary_text = f"""
+        This report summarizes the current climate risk situation across Rwanda's 30 districts.
+        The system has analyzed real-time weather data and generated <b>{len(alerts)} active alerts</b>
+        across multiple risk categories. The analysis is based on current meteorological conditions
+        including temperature, humidity, rainfall, and wind patterns.
+        """
+        elements.append(Paragraph(summary_text, normal_style))
+        elements.append(Spacer(1, 0.2*inch))
+
+        # Risk Distribution by Severity
+        elements.append(Paragraph("Risk Distribution by Severity", heading_style))
+        severity_data = [['Severity Level', 'Alert Count', 'Percentage']]
+        total_alerts = len(alerts) if len(alerts) > 0 else 1
+
+        for severity in ['Critical', 'High', 'Medium', 'Low']:
+            count = severity_counts[severity]
+            percentage = f"{(count/total_alerts*100):.1f}%"
+            severity_data.append([severity, str(count), percentage])
+
+        severity_table = Table(severity_data, colWidths=[2*inch, 1.5*inch, 1.5*inch])
+        severity_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        elements.append(severity_table)
+        elements.append(Spacer(1, 0.3*inch))
+
+        # Risk Distribution by Type
+        elements.append(Paragraph("Risk Distribution by Hazard Type", heading_style))
+        type_data = [['Hazard Type', 'Alert Count']]
+        for risk_type, count in sorted(type_counts.items(), key=lambda x: x[1], reverse=True):
+            type_data.append([risk_type, str(count)])
+
+        type_table = Table(type_data, colWidths=[3*inch, 2*inch])
+        type_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        elements.append(type_table)
+        elements.append(Spacer(1, 0.3*inch))
+
+        # Top Priority Alerts
+        elements.append(Paragraph("High Priority Alerts", heading_style))
+        high_priority = [a for a in alerts if a.get('severity') in ['Critical', 'High']]
+
+        if high_priority:
+            for alert in high_priority[:5]:  # Top 5
+                alert_text = f"""
+                <b>{alert.get('severity')} - {alert.get('type', 'Unknown').capitalize()}</b><br/>
+                <i>District:</i> {alert.get('district')}<br/>
+                <i>Message:</i> {alert.get('message', 'No details')}<br/>
+                <i>Affected Population:</i> {alert.get('affected_population', 0):,} people
+                """
+                elements.append(Paragraph(alert_text, normal_style))
+                elements.append(Spacer(1, 0.15*inch))
+        else:
+            elements.append(Paragraph("No high priority alerts at this time.", normal_style))
+
+        elements.append(Spacer(1, 0.2*inch))
+
+        # Recommendations
+        elements.append(Paragraph("Recommendations", heading_style))
+        recommendations = """
+        <b>1. Emergency Response:</b> Activate emergency response teams in high-risk districts.<br/>
+        <b>2. Public Communication:</b> Disseminate alerts through SMS, radio, and community leaders.<br/>
+        <b>3. Monitoring:</b> Continue 24/7 monitoring of weather conditions and update alerts as needed.<br/>
+        <b>4. Preparedness:</b> Ensure evacuation routes are clear and emergency supplies are available.<br/>
+        <b>5. Coordination:</b> Maintain communication with district officials and humanitarian organizations.
+        """
+        elements.append(Paragraph(recommendations, normal_style))
+
+        # Footer
+        elements.append(Spacer(1, 0.5*inch))
+        footer = Paragraph(f"<i>Report generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>", normal_style)
+        elements.append(footer)
+
+        # Build PDF
+        doc.build(elements)
+        output.seek(0)
+
+        # Generate filename
+        filename = f"Climate_Risk_Summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+        return send_file(
+            output,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        print(f"[ERROR] PDF report generation failed: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Failed to generate PDF report: {str(e)}'
+        }), 500
 
 # ============================================================================
 # ERROR HANDLERS
