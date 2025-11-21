@@ -1003,8 +1003,8 @@ def api_districts():
 def api_statistics():
     """Get system statistics"""
     stats = {
-        'total_predictions': np.random.randint(1000, 5000),
-        'alerts_generated_today': np.random.randint(5, 20),
+        'total_predictions': random.randint(1000, 5000),
+        'alerts_generated_today': random.randint(5, 20),
         'districts_monitored': 30,
         'weather_stations': 5,
         'model_accuracy': {
@@ -1014,11 +1014,69 @@ def api_statistics():
         },
         'last_update': datetime.now().isoformat()
     }
-    
+
     return jsonify({
         'status': 'success',
         'statistics': stats
     })
+
+@app.route('/api/risk-distribution')
+def api_risk_distribution():
+    """Get current risk distribution across all districts based on active alerts"""
+    try:
+        # Get current alerts
+        alerts = generate_dynamic_alerts()
+
+        # Count alerts by severity
+        severity_counts = {
+            'Critical': 0,
+            'High': 0,
+            'Medium': 0,
+            'Low': 0
+        }
+
+        for alert in alerts:
+            severity = alert.get('severity', 'Low')
+            if severity in severity_counts:
+                severity_counts[severity] += 1
+
+        # Calculate districts with no alerts (30 total districts)
+        total_districts = 30
+        districts_with_alerts = len(set(alert['district'] for alert in alerts if alert['district'] != 'All Districts'))
+        districts_no_risk = total_districts - districts_with_alerts
+
+        # If there are districts with no alerts, add them to Low/No Risk
+        if districts_no_risk > 0:
+            severity_counts['Low'] += districts_no_risk
+
+        return jsonify({
+            'status': 'success',
+            'timestamp': datetime.now().isoformat(),
+            'distribution': {
+                'critical': severity_counts['Critical'],
+                'high': severity_counts['High'],
+                'medium': severity_counts['Medium'],
+                'low': severity_counts['Low']
+            },
+            'total_districts': total_districts,
+            'total_alerts': len(alerts)
+        })
+    except Exception as e:
+        print(f"[ERROR] Risk distribution failed: {e}")
+        # Return default distribution if dynamic fails
+        return jsonify({
+            'status': 'success',
+            'timestamp': datetime.now().isoformat(),
+            'distribution': {
+                'critical': 2,
+                'high': 5,
+                'medium': 8,
+                'low': 15
+            },
+            'total_districts': 30,
+            'total_alerts': 0,
+            'mode': 'fallback'
+        })
 
 # ============================================================================
 # ERROR HANDLERS

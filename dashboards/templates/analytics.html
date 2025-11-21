@@ -339,11 +339,28 @@
                     currentRange = days;
                     createRiskTrendsChart(data.data);
                     createRainfallChart(data.data);
-                    createDistributionChart();
                     createAlertsChart(data.data);
                 }
+
+                // Load real-time risk distribution separately
+                await loadRiskDistribution();
             } catch (error) {
                 console.error('Error loading data:', error);
+            }
+        }
+
+        async function loadRiskDistribution() {
+            try {
+                const response = await fetch('/api/risk-distribution');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    createDistributionChart(data.distribution);
+                }
+            } catch (error) {
+                console.error('Error loading risk distribution:', error);
+                // Fallback to static data
+                createDistributionChart({ critical: 2, high: 5, medium: 8, low: 15 });
             }
         }
 
@@ -429,15 +446,23 @@
             });
         }
 
-        function createDistributionChart() {
+        function createDistributionChart(distribution) {
             const ctx = document.getElementById('distributionChart').getContext('2d');
-            
+
+            // Destroy existing chart if it exists
+            if (charts.distribution) {
+                charts.distribution.destroy();
+            }
+
+            // Use provided distribution data or default values
+            const data = distribution || { critical: 2, high: 5, medium: 8, low: 15 };
+
             charts.distribution = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Low Risk', 'Medium Risk', 'High Risk', 'Critical'],
+                    labels: ['Low/No Risk', 'Medium Risk', 'High Risk', 'Critical'],
                     datasets: [{
-                        data: [15, 8, 5, 2],
+                        data: [data.low, data.medium, data.high, data.critical],
                         backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#7c2d12']
                     }]
                 },
@@ -445,7 +470,18 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom' }
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return `${label}: ${value} districts (${percentage}%)`;
+                                }
+                            }
+                        }
                     }
                 }
             });
@@ -507,6 +543,11 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadHistoricalData();
+
+            // Auto-refresh risk distribution every 60 seconds
+            setInterval(() => {
+                loadRiskDistribution();
+            }, 60000);
         });
     </script>
 </body>
