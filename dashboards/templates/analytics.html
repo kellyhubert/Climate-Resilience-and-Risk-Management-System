@@ -328,13 +328,15 @@
 
     <script>
         let charts = {};
+        let currentRange = 30; // Default to 30 days
 
-        async function loadHistoricalData() {
+        async function loadHistoricalData(days = 30) {
             try {
-                const response = await fetch('/api/historical-data');
+                const response = await fetch(`/api/historical-data?days=${days}`);
                 const data = await response.json();
-                
+
                 if (data.status === 'success') {
+                    currentRange = days;
                     createRiskTrendsChart(data.data);
                     createRainfallChart(data.data);
                     createDistributionChart();
@@ -347,7 +349,12 @@
 
         function createRiskTrendsChart(data) {
             const ctx = document.getElementById('riskTrendsChart').getContext('2d');
-            
+
+            // Destroy existing chart if it exists
+            if (charts.riskTrends) {
+                charts.riskTrends.destroy();
+            }
+
             charts.riskTrends = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -480,10 +487,21 @@
                 btn.classList.remove('active');
             });
             event.target.classList.add('active');
-            
+
+            // Map range string to days
+            const daysMap = {
+                '7d': 7,
+                '30d': 30,
+                '90d': 90
+            };
+
+            const days = daysMap[range] || 30;
+
+            // Update subtitle
+            document.querySelector('.card-subtitle').textContent = `${days}-day historical risk levels`;
+
             // Reload data for selected range
-            console.log(`Loading data for range: ${range}`);
-            loadHistoricalData();
+            loadHistoricalData(days);
         }
 
         // Initialize

@@ -918,22 +918,63 @@ def api_predict():
     
 @app.route('/api/historical-data')
 def api_historical_data():
-    """Get historical risk data for charts"""
-    # Generate sample time series data
-    days = 30
+    """Get historical risk data for charts with variable time ranges"""
+    # Get days parameter from query string (default: 30)
+    days_param = request.args.get('days', '30')
+
+    try:
+        days = int(days_param)
+        # Limit to reasonable ranges
+        if days < 1:
+            days = 7
+        elif days > 365:
+            days = 365
+    except ValueError:
+        days = 30
+
+    # Generate dates
     dates = [(datetime.now() - timedelta(days=x)).strftime('%Y-%m-%d') for x in range(days, 0, -1)]
-    
+
+    # Generate variable data with more realistic patterns
+    landslide_risk = []
+    flood_risk = []
+    drought_risk = []
+    rainfall = []
+
+    # Create seasonal patterns
+    for i in range(days):
+        # Current position in the cycle (simulating seasons)
+        cycle_position = (i / days) * 2 * 3.14159  # Full cycle over time period
+
+        # Landslide risk (higher during rainy season)
+        base_landslide = 0.3 + 0.3 * math.sin(cycle_position)
+        landslide_risk.append(max(0.1, min(0.9, base_landslide + random.uniform(-0.15, 0.15))))
+
+        # Flood risk (peaks slightly after landslide)
+        base_flood = 0.25 + 0.25 * math.sin(cycle_position + 0.5)
+        flood_risk.append(max(0.1, min(0.8, base_flood + random.uniform(-0.12, 0.12))))
+
+        # Drought risk (inverse of rainy season)
+        base_drought = 0.35 - 0.25 * math.sin(cycle_position)
+        drought_risk.append(max(0.1, min(0.7, base_drought + random.uniform(-0.1, 0.1))))
+
+        # Rainfall (correlates with landslide/flood risk)
+        base_rainfall = 15 + 20 * math.sin(cycle_position)
+        rainfall.append(max(0, base_rainfall + random.uniform(-10, 15)))
+
     data = {
         'dates': dates,
-        'landslide_risk': [np.random.uniform(0.2, 0.8) for _ in range(days)],
-        'flood_risk': [np.random.uniform(0.1, 0.7) for _ in range(days)],
-        'drought_risk': [np.random.uniform(0.15, 0.6) for _ in range(days)],
-        'rainfall': [np.random.gamma(2, 10) for _ in range(days)]
+        'landslide_risk': [round(val, 3) for val in landslide_risk],
+        'flood_risk': [round(val, 3) for val in flood_risk],
+        'drought_risk': [round(val, 3) for val in drought_risk],
+        'rainfall': [round(val, 1) for val in rainfall],
+        'days': days
     }
-    
+
     return jsonify({
         'status': 'success',
-        'data': data
+        'data': data,
+        'range': f'{days} days'
     })
 
 @app.route('/api/districts')
