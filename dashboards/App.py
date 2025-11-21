@@ -8,13 +8,14 @@ from flask_cors import CORS
 from pathlib import Path
 import sys
 import json
+import os
 from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 import requests
 
 # Configuration
-OPENWEATHER_API_KEY = "c45952d88bbd1eae279947148383f7d6"  # Get free key from openweathermap.org
+OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', "c45952d88bbd1eae279947148383f7d6")
 OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 OPENWEATHER_FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"
 
@@ -689,8 +690,11 @@ if __name__ == '__main__':
     print("\nPress Ctrl+C to stop\n")
 
     # Run the app
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') != 'production'
+
     app.run(
         host='0.0.0.0',
-        port=5000,
-        debug=True
+        port=port,
+        debug=debug
     )
