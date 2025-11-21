@@ -16,6 +16,50 @@ import requests
 # Configuration
 OPENWEATHER_API_KEY = "c45952d88bbd1eae279947148383f7d6"  # Get free key from openweathermap.org
 OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
+OPENWEATHER_FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"
+
+# Rwanda's 30 Districts with coordinates (approximate district centers)
+RWANDA_DISTRICTS = {
+    # Eastern Province
+    'Bugesera': {'lat': -2.2167, 'lon': 30.2167, 'province': 'Eastern'},
+    'Gatsibo': {'lat': -1.6333, 'lon': 30.4000, 'province': 'Eastern'},
+    'Kayonza': {'lat': -1.8833, 'lon': 30.6333, 'province': 'Eastern'},
+    'Kirehe': {'lat': -2.2167, 'lon': 30.7000, 'province': 'Eastern'},
+    'Ngoma': {'lat': -2.1667, 'lon': 30.5333, 'province': 'Eastern'},
+    'Nyagatare': {'lat': -1.3000, 'lon': 30.3333, 'province': 'Eastern'},
+    'Rwamagana': {'lat': -1.9500, 'lon': 30.4333, 'province': 'Eastern'},
+
+    # Kigali Province
+    'Gasabo': {'lat': -1.9167, 'lon': 30.1000, 'province': 'Kigali'},
+    'Kicukiro': {'lat': -1.9833, 'lon': 30.1000, 'province': 'Kigali'},
+    'Nyarugenge': {'lat': -1.9500, 'lon': 30.0500, 'province': 'Kigali'},
+
+    # Northern Province
+    'Burera': {'lat': -1.4833, 'lon': 29.8833, 'province': 'Northern'},
+    'Gakenke': {'lat': -1.6667, 'lon': 29.7667, 'province': 'Northern'},
+    'Gicumbi': {'lat': -1.6333, 'lon': 30.0167, 'province': 'Northern'},
+    'Musanze': {'lat': -1.4994, 'lon': 29.6338, 'province': 'Northern'},
+    'Rulindo': {'lat': -1.7667, 'lon': 30.0833, 'province': 'Northern'},
+
+    # Southern Province
+    'Gisagara': {'lat': -2.5667, 'lon': 29.8333, 'province': 'Southern'},
+    'Huye': {'lat': -2.6067, 'lon': 29.7394, 'province': 'Southern'},
+    'Kamonyi': {'lat': -2.0833, 'lon': 29.8833, 'province': 'Southern'},
+    'Muhanga': {'lat': -2.0833, 'lon': 29.7333, 'province': 'Southern'},
+    'Nyamagabe': {'lat': -2.5333, 'lon': 29.4333, 'province': 'Southern'},
+    'Nyanza': {'lat': -2.3500, 'lon': 29.7500, 'province': 'Southern'},
+    'Nyaruguru': {'lat': -2.6333, 'lon': 29.3833, 'province': 'Southern'},
+    'Ruhango': {'lat': -2.2333, 'lon': 29.7833, 'province': 'Southern'},
+
+    # Western Province
+    'Karongi': {'lat': -2.0000, 'lon': 29.3667, 'province': 'Western'},
+    'Ngororero': {'lat': -1.8167, 'lon': 29.5833, 'province': 'Western'},
+    'Nyabihu': {'lat': -1.6333, 'lon': 29.5000, 'province': 'Western'},
+    'Nyamasheke': {'lat': -2.3500, 'lon': 29.0833, 'province': 'Western'},
+    'Rubavu': {'lat': -1.6500, 'lon': 29.3000, 'province': 'Western'},
+    'Rusizi': {'lat': -2.4843, 'lon': 28.9086, 'province': 'Western'},
+    'Rutsiro': {'lat': -1.9667, 'lon': 29.3333, 'province': 'Western'},
+}
 
 # Add parent directory to path to import models
 project_root = Path(__file__).parent.parent
@@ -372,6 +416,108 @@ def api_weather_realtime():
         'timestamp': datetime.now().isoformat(),
         'stations': weather_data,
         'source': 'OpenWeatherMap API' if len(weather_data) > 0 else 'Demo Data'
+    })
+
+# NEW ROUTE: WEATHER FORECAST FOR ALL 30 DISTRICTS
+@app.route('/api/weather-forecast')
+def api_weather_forecast():
+    """Get weather forecast for all 30 districts in Rwanda"""
+
+    # Check if API key is configured
+    if OPENWEATHER_API_KEY == "YOUR_API_KEY_HERE":
+        print("[WARNING] OpenWeatherMap API key not configured.")
+        return jsonify({
+            'status': 'error',
+            'message': 'API key not configured'
+        }), 500
+
+    forecast_data = []
+
+    for district_name, coords in RWANDA_DISTRICTS.items():
+        try:
+            # Call OpenWeatherMap Forecast API (5-day forecast in 3-hour intervals)
+            response = requests.get(
+                OPENWEATHER_FORECAST_URL,
+                params={
+                    'lat': coords['lat'],
+                    'lon': coords['lon'],
+                    'appid': OPENWEATHER_API_KEY,
+                    'units': 'metric',
+                    'cnt': 8  # Get next 24 hours (8 x 3-hour intervals)
+                },
+                timeout=5
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+
+                # Process forecast data
+                forecasts = []
+                weather_conditions = []
+
+                for item in data['list']:
+                    forecast_time = datetime.fromtimestamp(item['dt'])
+                    weather_main = item['weather'][0]['main'].lower()
+                    weather_desc = item['weather'][0]['description']
+
+                    weather_conditions.append(weather_main)
+
+                    forecasts.append({
+                        'time': forecast_time.strftime('%Y-%m-%d %H:%M'),
+                        'temp': round(item['main']['temp'], 1),
+                        'condition': weather_main,
+                        'description': weather_desc,
+                        'humidity': item['main']['humidity'],
+                        'rain_probability': item.get('pop', 0) * 100  # Probability of precipitation
+                    })
+
+                # Determine overall weather prediction (sunny, cloudy, or rain)
+                rain_conditions = ['rain', 'drizzle', 'thunderstorm']
+                cloud_conditions = ['clouds']
+
+                rain_count = sum(1 for cond in weather_conditions if cond in rain_conditions)
+                cloud_count = sum(1 for cond in weather_conditions if cond in cloud_conditions)
+
+                if rain_count > len(weather_conditions) * 0.3:  # More than 30% rain
+                    prediction = 'rain'
+                    icon = '🌧️'
+                elif cloud_count > len(weather_conditions) * 0.5:  # More than 50% cloudy
+                    prediction = 'cloudy'
+                    icon = '☁️'
+                else:
+                    prediction = 'sunny'
+                    icon = '☀️'
+
+                forecast_data.append({
+                    'district': district_name,
+                    'province': coords['province'],
+                    'prediction': prediction,
+                    'icon': icon,
+                    'forecasts': forecasts[:4],  # Return next 4 time periods (12 hours)
+                    'avg_temp': round(sum(f['temp'] for f in forecasts) / len(forecasts), 1),
+                    'max_temp': round(max(f['temp'] for f in forecasts), 1),
+                    'min_temp': round(min(f['temp'] for f in forecasts), 1)
+                })
+            else:
+                print(f"API error for {district_name}: {response.status_code}")
+
+        except Exception as e:
+            print(f"Error fetching forecast for {district_name}: {e}")
+            # Add placeholder data for failed requests
+            forecast_data.append({
+                'district': district_name,
+                'province': coords['province'],
+                'prediction': 'unknown',
+                'icon': '❓',
+                'error': 'Data unavailable'
+            })
+
+    return jsonify({
+        'status': 'success',
+        'timestamp': datetime.now().isoformat(),
+        'total_districts': len(forecast_data),
+        'forecasts': sorted(forecast_data, key=lambda x: (x['province'], x['district'])),
+        'source': 'OpenWeatherMap Forecast API'
     })
 
 @app.route('/api/predict', methods=['POST'])

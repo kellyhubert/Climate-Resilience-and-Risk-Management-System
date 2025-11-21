@@ -302,19 +302,113 @@
             transform: translateY(-2px);
         }
 
+        /* Forecast Grid */
+        .forecast-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .forecast-card {
+            background: linear-gradient(135deg, #f6f8fb 0%, #ffffff 100%);
+            border-radius: 12px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+
+        .forecast-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            border-color: #667eea;
+        }
+
+        .forecast-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .district-name {
+            font-weight: 700;
+            color: #2d3748;
+            font-size: 16px;
+        }
+
+        .weather-icon {
+            font-size: 36px;
+        }
+
+        .forecast-info {
+            margin-top: 10px;
+        }
+
+        .forecast-label {
+            font-size: 11px;
+            color: #718096;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .forecast-value {
+            font-size: 14px;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .temp-range {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .temp-item {
+            text-align: center;
+        }
+
+        .temp-item span {
+            display: block;
+            font-size: 11px;
+            color: #718096;
+        }
+
+        .temp-item strong {
+            font-size: 16px;
+            color: #2d3748;
+        }
+
+        .province-badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background: #edf2f7;
+            color: #4a5568;
+            font-weight: 600;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .header-stats {
                 flex-direction: column;
                 gap: 15px;
             }
-            
+
             .nav-tabs {
                 flex-wrap: wrap;
+            }
+
+            .forecast-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -399,6 +493,20 @@
                     <div class="loading">
                         <div class="spinner"></div>
                         Loading weather data...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weather Forecast for All Districts -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    <h2 class="card-title">Weather Forecast - All 30 Districts</h2>
+                    <span class="card-badge badge-info" id="forecast-count">30 Districts</span>
+                </div>
+                <div id="forecast-container">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading forecast data...
                     </div>
                 </div>
             </div>
@@ -628,10 +736,106 @@ function getRiskClass(probability) {
             const date = new Date(timestamp);
             const now = new Date();
             const diff = Math.floor((now - date) / 1000 / 60); // minutes
-            
+
             if (diff < 60) return `${diff}m ago`;
             if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
             return `${Math.floor(diff / 1440)}d ago`;
+        }
+
+        // Fetch and display weather forecast for all districts
+        async function fetchWeatherForecast() {
+            try {
+                const response = await fetch(`${API_BASE}/api/weather-forecast`);
+                const data = await response.json();
+
+                if (data.status === 'success' && data.forecasts) {
+                    document.getElementById('forecast-count').textContent = `${data.total_districts} Districts`;
+
+                    // Group forecasts by province
+                    const groupedByProvince = data.forecasts.reduce((acc, forecast) => {
+                        if (!acc[forecast.province]) {
+                            acc[forecast.province] = [];
+                        }
+                        acc[forecast.province].push(forecast);
+                        return acc;
+                    }, {});
+
+                    let forecastHTML = '<div class="forecast-grid">';
+
+                    // Sort provinces for consistent display
+                    const provinces = Object.keys(groupedByProvince).sort();
+
+                    provinces.forEach(province => {
+                        groupedByProvince[province].forEach(forecast => {
+                            const predictionText = {
+                                'rain': 'Rainy',
+                                'cloudy': 'Cloudy',
+                                'sunny': 'Sunny',
+                                'unknown': 'No Data'
+                            };
+
+                            forecastHTML += `
+                                <div class="forecast-card">
+                                    <div class="forecast-header">
+                                        <div>
+                                            <div class="district-name">${forecast.district}</div>
+                                            <span class="province-badge">${forecast.province}</span>
+                                        </div>
+                                        <div class="weather-icon">${forecast.icon || '❓'}</div>
+                                    </div>
+                                    <div class="forecast-info">
+                                        <div class="forecast-label">Prediction</div>
+                                        <div class="forecast-value">${predictionText[forecast.prediction] || 'Unknown'}</div>
+                            `;
+
+                            if (forecast.avg_temp) {
+                                forecastHTML += `
+                                    <div class="temp-range">
+                                        <div class="temp-item">
+                                            <span>Min</span>
+                                            <strong>${forecast.min_temp}°C</strong>
+                                        </div>
+                                        <div class="temp-item">
+                                            <span>Avg</span>
+                                            <strong>${forecast.avg_temp}°C</strong>
+                                        </div>
+                                        <div class="temp-item">
+                                            <span>Max</span>
+                                            <strong>${forecast.max_temp}°C</strong>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            if (forecast.error) {
+                                forecastHTML += `
+                                    <div style="color: #ef4444; font-size: 12px; margin-top: 10px;">
+                                        ${forecast.error}
+                                    </div>
+                                `;
+                            }
+
+                            forecastHTML += `
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    });
+
+                    forecastHTML += '</div>';
+                    document.getElementById('forecast-container').innerHTML = forecastHTML;
+                } else {
+                    throw new Error('No forecast data available');
+                }
+            } catch (error) {
+                console.error('Error fetching forecast:', error);
+                document.getElementById('forecast-container').innerHTML = `
+                    <div style="padding: 20px; text-align: center; color: #ef4444;">
+                        <p>⚠️ Unable to load forecast data</p>
+                        <p style="font-size: 12px; margin-top: 5px;">Check console for details</p>
+                    </div>
+                `;
+            }
         }
 
         // Refresh all data
@@ -641,6 +845,7 @@ function getRiskClass(probability) {
             fetchAlerts();
             fetchWeather();
             fetchDistrictRisks();
+            fetchWeatherForecast();
         }
 
         // Initialize dashboard
