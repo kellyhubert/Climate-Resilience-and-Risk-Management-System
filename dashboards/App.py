@@ -11,8 +11,15 @@ import json
 import os
 from datetime import datetime, timedelta
 import numpy as np
-import pandas as pd
 import requests
+
+# Try to import pandas (optional)
+try:
+    import pandas as pd
+    pandas_available = True
+except ImportError:
+    pandas_available = False
+    print("[WARNING] pandas not available - some features may be limited")
 
 # Configuration
 OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', "c45952d88bbd1eae279947148383f7d6")

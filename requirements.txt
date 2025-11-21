@@ -2,14 +2,7 @@
 Flask==3.0.0
 flask-cors==4.0.0
 gunicorn==21.2.0
-
-# Machine Learning
-scikit-learn==1.3.2
-numpy==1.26.2
-pandas==2.1.4
-
-# Model Persistence
-joblib==1.3.2
+Werkzeug==3.0.1
 
 # HTTP Requests
 requests==2.31.0
@@ -17,5 +10,5 @@ requests==2.31.0
 # Utilities
 python-dateutil==2.8.2
 
-# For advanced features
-scipy==1.11.4
+# Lightweight data handling
+numpy==1.24.3
