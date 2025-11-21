@@ -347,7 +347,7 @@ def generate_dynamic_alerts():
                             'affected_population': int(population * 0.15)
                         })
                         alert_counter += 1
-                    elif rainfall_24h > 60 and humidity > 70:
+                    elif rainfall_24h > 40 and humidity > 70:
                         alerts.append({
                             'id': f'LS_{alert_counter:03d}',
                             'type': 'landslide',
@@ -358,7 +358,7 @@ def generate_dynamic_alerts():
                             'affected_population': int(population * 0.10)
                         })
                         alert_counter += 1
-                    elif rainfall_24h > 35 and humidity > 60:
+                    elif rainfall_24h > 20 and humidity > 60:
                         alerts.append({
                             'id': f'LS_{alert_counter:03d}',
                             'type': 'landslide',
@@ -367,6 +367,17 @@ def generate_dynamic_alerts():
                             'message': f'Moderate rainfall detected ({rainfall_24h:.1f}mm/24h). Elevated landslide risk. Monitor conditions closely.',
                             'timestamp': datetime.now().isoformat(),
                             'affected_population': int(population * 0.05)
+                        })
+                        alert_counter += 1
+                    elif rainfall_24h > 10 and humidity > 50:
+                        alerts.append({
+                            'id': f'LS_{alert_counter:03d}',
+                            'type': 'landslide',
+                            'severity': 'Low',
+                            'district': district_name,
+                            'message': f'Light rainfall detected ({rainfall_24h:.1f}mm/24h). Monitor weather conditions. Be prepared for changing conditions.',
+                            'timestamp': datetime.now().isoformat(),
+                            'affected_population': int(population * 0.03)
                         })
                         alert_counter += 1
 
@@ -383,7 +394,7 @@ def generate_dynamic_alerts():
                             'affected_population': int(population * 0.20)
                         })
                         alert_counter += 1
-                    elif rainfall_24h > 50 or rain_1h > 10:
+                    elif rainfall_24h > 35 or rain_1h > 5:
                         alerts.append({
                             'id': f'FL_{alert_counter:03d}',
                             'type': 'flood',
@@ -394,7 +405,7 @@ def generate_dynamic_alerts():
                             'affected_population': int(population * 0.12)
                         })
                         alert_counter += 1
-                    elif rainfall_24h > 25:
+                    elif rainfall_24h > 15:
                         alerts.append({
                             'id': f'FL_{alert_counter:03d}',
                             'type': 'flood',
@@ -405,10 +416,21 @@ def generate_dynamic_alerts():
                             'affected_population': int(population * 0.05)
                         })
                         alert_counter += 1
+                    elif rainfall_24h > 5:
+                        alerts.append({
+                            'id': f'FL_{alert_counter:03d}',
+                            'type': 'flood',
+                            'severity': 'Low',
+                            'district': district_name,
+                            'message': f'Light rainfall detected ({rainfall_24h:.1f}mm/24h). Minor pooling possible. Keep drains clear.',
+                            'timestamp': datetime.now().isoformat(),
+                            'affected_population': int(population * 0.02)
+                        })
+                        alert_counter += 1
 
                 # DROUGHT RISK ASSESSMENT (based on low rainfall and high temp)
                 if district_name in drought_prone:
-                    if rainfall_24h < 1 and temp > 32:
+                    if rainfall_24h < 1 and temp > 30:
                         alerts.append({
                             'id': f'DR_{alert_counter:03d}',
                             'type': 'drought',
@@ -419,7 +441,7 @@ def generate_dynamic_alerts():
                             'affected_population': int(population * 0.40)
                         })
                         alert_counter += 1
-                    elif rainfall_24h < 2 and temp > 28:
+                    elif rainfall_24h < 3 and temp > 25:
                         alerts.append({
                             'id': f'DR_{alert_counter:03d}',
                             'type': 'drought',
@@ -430,7 +452,7 @@ def generate_dynamic_alerts():
                             'affected_population': int(population * 0.25)
                         })
                         alert_counter += 1
-                    elif rainfall_24h < 5 and temp > 26:
+                    elif rainfall_24h < 8 and temp > 22:
                         alerts.append({
                             'id': f'DR_{alert_counter:03d}',
                             'type': 'drought',
@@ -443,7 +465,7 @@ def generate_dynamic_alerts():
                         alert_counter += 1
 
                 # EXTREME WEATHER CONDITIONS (affects all districts)
-                if temp > 35:
+                if temp > 32:
                     alerts.append({
                         'id': f'HT_{alert_counter:03d}',
                         'type': 'heatwave',
@@ -454,16 +476,38 @@ def generate_dynamic_alerts():
                         'affected_population': int(population * 0.30)
                     })
                     alert_counter += 1
+                elif temp > 28:
+                    alerts.append({
+                        'id': f'HT_{alert_counter:03d}',
+                        'type': 'heatwave',
+                        'severity': 'Medium',
+                        'district': district_name,
+                        'message': f'Warm weather advisory. Temperature {temp:.1f}°C. Stay hydrated and limit strenuous outdoor activities.',
+                        'timestamp': datetime.now().isoformat(),
+                        'affected_population': int(population * 0.20)
+                    })
+                    alert_counter += 1
 
-                if wind_speed > 15:
+                if wind_speed > 12:
+                    alerts.append({
+                        'id': f'WD_{alert_counter:03d}',
+                        'type': 'wind',
+                        'severity': 'High',
+                        'district': district_name,
+                        'message': f'Strong winds detected ({wind_speed:.1f} m/s). Secure loose objects. Possible damage to structures and crops.',
+                        'timestamp': datetime.now().isoformat(),
+                        'affected_population': int(population * 0.08)
+                    })
+                    alert_counter += 1
+                elif wind_speed > 7:
                     alerts.append({
                         'id': f'WD_{alert_counter:03d}',
                         'type': 'wind',
                         'severity': 'Medium',
                         'district': district_name,
-                        'message': f'Strong winds detected ({wind_speed:.1f} m/s). Secure loose objects. Possible damage to structures and crops.',
+                        'message': f'Moderate winds detected ({wind_speed:.1f} m/s). Secure lightweight objects. Monitor conditions.',
                         'timestamp': datetime.now().isoformat(),
-                        'affected_population': int(population * 0.08)
+                        'affected_population': int(population * 0.05)
                     })
                     alert_counter += 1
 
