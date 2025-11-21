@@ -275,7 +275,218 @@ def generate_demo_alerts():
             'affected_population': 50000
         }
     ]
-    
+
+    return alerts
+
+def generate_dynamic_alerts():
+    """Generate alerts based on real-time weather data from all 30 districts"""
+    alerts = []
+    alert_counter = 1
+
+    # High-risk districts by hazard type
+    landslide_prone = ['Musanze', 'Burera', 'Gakenke', 'Nyabihu', 'Nyamasheke', 'Nyaruguru', 'Gisagara']
+    flood_prone = ['Gasabo', 'Kicukiro', 'Nyarugenge', 'Rusizi', 'Rubavu', 'Ngoma', 'Bugesera']
+    drought_prone = ['Kirehe', 'Gatsibo', 'Nyagatare', 'Kayonza', 'Rwamagana', 'Bugesera']
+
+    # District population estimates (approximate)
+    population_data = {
+        'Bugesera': 380000, 'Gatsibo': 430000, 'Kayonza': 350000, 'Kirehe': 460000,
+        'Ngoma': 400000, 'Nyagatare': 500000, 'Rwamagana': 350000,
+        'Gasabo': 530000, 'Kicukiro': 492000, 'Nyarugenge': 374000,
+        'Burera': 388000, 'Gakenke': 380000, 'Gicumbi': 449000, 'Musanze': 477000, 'Rulindo': 310000,
+        'Gisagara': 310000, 'Huye': 385000, 'Kamonyi': 370000, 'Muhanga': 365000,
+        'Nyamagabe': 365000, 'Nyanza': 345000, 'Nyaruguru': 318000, 'Ruhango': 320000,
+        'Karongi': 360000, 'Ngororero': 365000, 'Nyabihu': 320000, 'Nyamasheke': 400000,
+        'Rubavu': 407000, 'Rusizi': 450000, 'Rutsiro': 360000
+    }
+
+    # Fetch real-time weather for all districts
+    for district_name, coords in RWANDA_DISTRICTS.items():
+        try:
+            response = requests.get(
+                OPENWEATHER_BASE_URL,
+                params={
+                    'lat': coords['lat'],
+                    'lon': coords['lon'],
+                    'appid': OPENWEATHER_API_KEY,
+                    'units': 'metric'
+                },
+                timeout=3
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+
+                # Extract weather parameters
+                temp = data['main']['temp']
+                humidity = data['main']['humidity']
+                rain_1h = data.get('rain', {}).get('1h', 0)
+                wind_speed = data['wind']['speed']
+                weather_main = data['weather'][0]['main'].lower()
+
+                # Estimate 24h rainfall (multiply 1h by factor based on conditions)
+                if 'rain' in weather_main or 'drizzle' in weather_main:
+                    rainfall_24h = rain_1h * 18  # Active rain
+                elif 'thunderstorm' in weather_main:
+                    rainfall_24h = rain_1h * 24  # Heavy rain
+                else:
+                    rainfall_24h = rain_1h * 10  # Light/intermittent
+
+                population = population_data.get(district_name, 300000)
+
+                # LANDSLIDE RISK ASSESSMENT
+                if district_name in landslide_prone:
+                    if rainfall_24h > 100 and humidity > 80:
+                        alerts.append({
+                            'id': f'LS_{alert_counter:03d}',
+                            'type': 'landslide',
+                            'severity': 'Critical',
+                            'district': district_name,
+                            'message': f'CRITICAL: Extreme rainfall detected ({rainfall_24h:.1f}mm/24h). Immediate evacuation of mountainous areas required. Landslide imminent.',
+                            'timestamp': datetime.now().isoformat(),
+                            'affected_population': int(population * 0.15)
+                        })
+                        alert_counter += 1
+                    elif rainfall_24h > 60 and humidity > 70:
+                        alerts.append({
+                            'id': f'LS_{alert_counter:03d}',
+                            'type': 'landslide',
+                            'severity': 'High',
+                            'district': district_name,
+                            'message': f'Heavy rainfall detected ({rainfall_24h:.1f}mm/24h). High landslide risk in mountainous areas. Prepare for possible evacuation.',
+                            'timestamp': datetime.now().isoformat(),
+                            'affected_population': int(population * 0.10)
+                        })
+                        alert_counter += 1
+                    elif rainfall_24h > 35 and humidity > 60:
+                        alerts.append({
+                            'id': f'LS_{alert_counter:03d}',
+                            'type': 'landslide',
+                            'severity': 'Medium',
+                            'district': district_name,
+                            'message': f'Moderate rainfall detected ({rainfall_24h:.1f}mm/24h). Elevated landslide risk. Monitor conditions closely.',
+                            'timestamp': datetime.now().isoformat(),
+                            'affected_population': int(population * 0.05)
+                        })
+                        alert_counter += 1
+
+                # FLOOD RISK ASSESSMENT
+                if district_name in flood_prone:
+                    if rainfall_24h > 80 or (rain_1h > 15 and wind_speed > 8):
+                        alerts.append({
+                            'id': f'FL_{alert_counter:03d}',
+                            'type': 'flood',
+                            'severity': 'Critical',
+                            'district': district_name,
+                            'message': f'CRITICAL: Flash flood warning! Intense rainfall ({rainfall_24h:.1f}mm/24h). Evacuate low-lying areas immediately. Roads may be impassable.',
+                            'timestamp': datetime.now().isoformat(),
+                            'affected_population': int(population * 0.20)
+                        })
+                        alert_counter += 1
+                    elif rainfall_24h > 50 or rain_1h > 10:
+                        alerts.append({
+                            'id': f'FL_{alert_counter:03d}',
+                            'type': 'flood',
+                            'severity': 'High',
+                            'district': district_name,
+                            'message': f'Urban flooding likely ({rainfall_24h:.1f}mm/24h). Drainage systems overwhelmed. Avoid low-lying areas and flooded roads.',
+                            'timestamp': datetime.now().isoformat(),
+                            'affected_population': int(population * 0.12)
+                        })
+                        alert_counter += 1
+                    elif rainfall_24h > 25:
+                        alerts.append({
+                            'id': f'FL_{alert_counter:03d}',
+                            'type': 'flood',
+                            'severity': 'Medium',
+                            'district': district_name,
+                            'message': f'Moderate rainfall detected ({rainfall_24h:.1f}mm/24h). Minor flooding possible in low-lying areas. Monitor weather updates.',
+                            'timestamp': datetime.now().isoformat(),
+                            'affected_population': int(population * 0.05)
+                        })
+                        alert_counter += 1
+
+                # DROUGHT RISK ASSESSMENT (based on low rainfall and high temp)
+                if district_name in drought_prone:
+                    if rainfall_24h < 1 and temp > 32:
+                        alerts.append({
+                            'id': f'DR_{alert_counter:03d}',
+                            'type': 'drought',
+                            'severity': 'High',
+                            'district': district_name,
+                            'message': f'Extended dry period with high temperatures ({temp:.1f}°C). Critical water shortage risk. Implement strict water conservation measures.',
+                            'timestamp': datetime.now().isoformat(),
+                            'affected_population': int(population * 0.40)
+                        })
+                        alert_counter += 1
+                    elif rainfall_24h < 2 and temp > 28:
+                        alerts.append({
+                            'id': f'DR_{alert_counter:03d}',
+                            'type': 'drought',
+                            'severity': 'Medium',
+                            'district': district_name,
+                            'message': f'Below-average rainfall with warm conditions ({temp:.1f}°C). Monitor water supplies. Agricultural stress possible.',
+                            'timestamp': datetime.now().isoformat(),
+                            'affected_population': int(population * 0.25)
+                        })
+                        alert_counter += 1
+                    elif rainfall_24h < 5 and temp > 26:
+                        alerts.append({
+                            'id': f'DR_{alert_counter:03d}',
+                            'type': 'drought',
+                            'severity': 'Low',
+                            'district': district_name,
+                            'message': f'Low rainfall pattern observed. Continue water conservation practices. Monitor weather forecasts.',
+                            'timestamp': datetime.now().isoformat(),
+                            'affected_population': int(population * 0.15)
+                        })
+                        alert_counter += 1
+
+                # EXTREME WEATHER CONDITIONS (affects all districts)
+                if temp > 35:
+                    alerts.append({
+                        'id': f'HT_{alert_counter:03d}',
+                        'type': 'heatwave',
+                        'severity': 'High',
+                        'district': district_name,
+                        'message': f'Extreme heat warning! Temperature {temp:.1f}°C. Risk of heat exhaustion. Stay hydrated and avoid outdoor activities.',
+                        'timestamp': datetime.now().isoformat(),
+                        'affected_population': int(population * 0.30)
+                    })
+                    alert_counter += 1
+
+                if wind_speed > 15:
+                    alerts.append({
+                        'id': f'WD_{alert_counter:03d}',
+                        'type': 'wind',
+                        'severity': 'Medium',
+                        'district': district_name,
+                        'message': f'Strong winds detected ({wind_speed:.1f} m/s). Secure loose objects. Possible damage to structures and crops.',
+                        'timestamp': datetime.now().isoformat(),
+                        'affected_population': int(population * 0.08)
+                    })
+                    alert_counter += 1
+
+        except Exception as e:
+            print(f"Error generating alerts for {district_name}: {e}")
+            continue
+
+    # If no alerts generated, return informational message
+    if len(alerts) == 0:
+        alerts.append({
+            'id': 'INFO_001',
+            'type': 'information',
+            'severity': 'Low',
+            'district': 'All Districts',
+            'message': 'No significant climate risks detected at this time. Conditions are favorable across Rwanda. Continue routine monitoring.',
+            'timestamp': datetime.now().isoformat(),
+            'affected_population': 0
+        })
+
+    # Sort alerts by severity (Critical > High > Medium > Low)
+    severity_order = {'Critical': 0, 'High': 1, 'Medium': 2, 'Low': 3}
+    alerts.sort(key=lambda x: severity_order.get(x['severity'], 4))
+
     return alerts
 
 def generate_demo_weather():
@@ -370,19 +581,30 @@ def api_current_risks():
 
 @app.route('/api/alerts')
 def api_alerts():
-    """Get current active alerts"""
-    alerts = generate_demo_alerts()
-    
+    """Get current active alerts based on real-time weather data"""
+    # Use dynamic alerts by default, fallback to demo if API fails
+    use_demo = request.args.get('demo', 'false').lower() == 'true'
+
+    if use_demo:
+        alerts = generate_demo_alerts()
+    else:
+        try:
+            alerts = generate_dynamic_alerts()
+        except Exception as e:
+            print(f"[ERROR] Dynamic alerts failed: {e}")
+            alerts = generate_demo_alerts()
+
     # Filter by severity if requested
     severity = request.args.get('severity')
     if severity:
         alerts = [a for a in alerts if a['severity'] == severity]
-    
+
     return jsonify({
         'status': 'success',
         'timestamp': datetime.now().isoformat(),
         'count': len(alerts),
-        'alerts': alerts
+        'alerts': alerts,
+        'mode': 'demo' if use_demo else 'dynamic'
     })
 
 @app.route('/api/weather')
