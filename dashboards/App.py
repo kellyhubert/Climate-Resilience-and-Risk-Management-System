@@ -300,8 +300,25 @@ def generate_dynamic_alerts():
         'Rubavu': 407000, 'Rusizi': 450000, 'Rutsiro': 360000
     }
 
-    # Fetch real-time weather for all districts
-    for district_name, coords in RWANDA_DISTRICTS.items():
+    # Priority districts to check (focus on high-risk areas for performance)
+    priority_districts = list(set(landslide_prone + flood_prone + drought_prone))
+
+    # Add Kigali districts for coverage
+    for district in ['Gasabo', 'Kicukiro', 'Nyarugenge']:
+        if district not in priority_districts:
+            priority_districts.append(district)
+
+    print(f"[INFO] Checking weather for {len(priority_districts)} priority districts...")
+
+    successful_fetches = 0
+    failed_fetches = 0
+
+    # Fetch real-time weather for priority districts
+    for district_name in priority_districts:
+        if district_name not in RWANDA_DISTRICTS:
+            continue
+
+        coords = RWANDA_DISTRICTS[district_name]
         try:
             response = requests.get(
                 OPENWEATHER_BASE_URL,
@@ -311,11 +328,12 @@ def generate_dynamic_alerts():
                     'appid': OPENWEATHER_API_KEY,
                     'units': 'metric'
                 },
-                timeout=3
+                timeout=5
             )
 
             if response.status_code == 200:
                 data = response.json()
+                successful_fetches += 1
 
                 # Extract weather parameters
                 temp = data['main']['temp']
@@ -512,8 +530,12 @@ def generate_dynamic_alerts():
                     alert_counter += 1
 
         except Exception as e:
-            print(f"Error generating alerts for {district_name}: {e}")
+            failed_fetches += 1
+            print(f"[ERROR] Failed to fetch weather for {district_name}: {e}")
             continue
+
+    print(f"[INFO] Weather fetch complete: {successful_fetches} successful, {failed_fetches} failed")
+    print(f"[INFO] Generated {len(alerts)} alerts")
 
     # If no alerts generated, return informational message
     if len(alerts) == 0:
