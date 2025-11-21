@@ -9,9 +9,52 @@ from pathlib import Path
 import sys
 import json
 import os
+import random
+import math
 from datetime import datetime, timedelta
-import numpy as np
 import requests
+
+# Try to import numpy (optional)
+try:
+    import numpy as np
+    numpy_available = True
+except ImportError:
+    numpy_available = False
+    print("[WARNING] numpy not available - using Python random module")
+    # Create numpy-like interface using Python's random module
+    class np:
+        @staticmethod
+        def random():
+            class RandomModule:
+                @staticmethod
+                def choice(options, p=None):
+                    if p:
+                        return random.choices(options, weights=p, k=1)[0]
+                    return random.choice(options)
+
+                @staticmethod
+                def uniform(low, high):
+                    return random.uniform(low, high)
+
+                @staticmethod
+                def gamma(shape, scale):
+                    # Simple gamma approximation
+                    return random.gammavariate(shape, scale)
+            return RandomModule()
+
+        @staticmethod
+        def sin(x):
+            return math.sin(x)
+
+        @staticmethod
+        def pi():
+            return math.pi
+
+        random = random
+
+    # Replace np.random with our mock
+    np.random = np.random()
+    np.pi = math.pi
 
 # Try to import pandas (optional)
 try:
