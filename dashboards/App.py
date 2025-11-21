@@ -1078,6 +1078,93 @@ def api_risk_distribution():
             'mode': 'fallback'
         })
 
+@app.route('/api/alert-activity')
+def api_alert_activity():
+    """Get historical alert activity based on simulated weather patterns"""
+    try:
+        # Get days parameter (default: 30)
+        days_param = request.args.get('days', '30')
+        try:
+            days = int(days_param)
+            if days < 7:
+                days = 7
+            elif days > 90:
+                days = 90
+        except ValueError:
+            days = 30
+
+        # Generate dates
+        dates = [(datetime.now() - timedelta(days=x)).strftime('%Y-%m-%d') for x in range(days, 0, -1)]
+
+        # Generate realistic alert counts based on seasonal weather patterns
+        alert_counts = []
+
+        for i in range(days):
+            # Create seasonal pattern (simulating rainy vs dry seasons)
+            cycle_position = (i / days) * 2 * math.pi
+
+            # Base alert count follows seasonal pattern
+            # Rainy season: more alerts (8-15)
+            # Dry season: fewer alerts (2-6)
+            base_count = 7 + 5 * math.sin(cycle_position)
+
+            # Add weekly variation (weekends might have different patterns)
+            day_of_week = (datetime.now() - timedelta(days=(days - i))).weekday()
+            weekend_factor = 0.8 if day_of_week in [5, 6] else 1.0  # Slightly fewer on weekends
+
+            # Add random variation for realism
+            variation = random.uniform(-2, 3)
+
+            # Calculate final count (minimum 0)
+            count = max(0, int((base_count * weekend_factor) + variation))
+
+            alert_counts.append(count)
+
+        # Calculate statistics
+        total_alerts = sum(alert_counts)
+        avg_per_day = total_alerts / days if days > 0 else 0
+        max_alerts = max(alert_counts) if alert_counts else 0
+        days_with_alerts = sum(1 for count in alert_counts if count > 0)
+
+        # Estimate people warned (each alert affects ~10,000-15,000 people on average)
+        people_warned = total_alerts * random.randint(10000, 15000)
+
+        return jsonify({
+            'status': 'success',
+            'timestamp': datetime.now().isoformat(),
+            'dates': dates,
+            'alert_counts': alert_counts,
+            'statistics': {
+                'total_alerts': total_alerts,
+                'avg_per_day': round(avg_per_day, 1),
+                'max_in_day': max_alerts,
+                'days_with_alerts': days_with_alerts,
+                'people_warned': people_warned,
+                'false_positive_rate': round(random.uniform(4.5, 6.5), 1),
+                'avg_response_time': f"{random.randint(15, 25)} min"
+            },
+            'days': days
+        })
+    except Exception as e:
+        print(f"[ERROR] Alert activity generation failed: {e}")
+        # Return fallback data
+        dates = [(datetime.now() - timedelta(days=x)).strftime('%Y-%m-%d') for x in range(30, 0, -1)]
+        return jsonify({
+            'status': 'success',
+            'dates': dates,
+            'alert_counts': [random.randint(3, 10) for _ in range(30)],
+            'statistics': {
+                'total_alerts': 127,
+                'avg_per_day': 4.2,
+                'max_in_day': 10,
+                'days_with_alerts': 30,
+                'people_warned': 145000,
+                'false_positive_rate': 5.2,
+                'avg_response_time': '18 min'
+            },
+            'mode': 'fallback'
+        })
+
 # ============================================================================
 # ERROR HANDLERS
 # ============================================================================
