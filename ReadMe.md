@@ -8,6 +8,8 @@
 > An advanced machine learning-based early warning system for predicting and monitoring climate-related disasters in Rwanda, including landslides, floods, and droughts.
 
 ---
+## Usage
+https://climate-resilience-and-risk-management.onrender.com
 
 ## 📋 Table of Contents
 
