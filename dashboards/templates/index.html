@@ -33,7 +33,7 @@
         }
 
         .header h1 {
-            color: #2d3748;
+            color: #0284c7;
             font-size: 28px;
             margin-bottom: 5px;
         }
@@ -65,7 +65,7 @@
             font-size: 20px;
         }
 
-        .stat-icon.green { background: #10b981; }
+        .stat-icon.green { background: #16a34a; }
         .stat-icon.yellow { background: #f59e0b; }
         .stat-icon.red { background: #ef4444; }
 
@@ -105,7 +105,7 @@
 
         .nav-tab.active {
             background: white;
-            color: #667eea;
+            color: #0284c7;
         }
 
         /* Dashboard Grid */
@@ -133,7 +133,7 @@
         .card-title {
             font-size: 18px;
             font-weight: 700;
-            color: #2d3748;
+            color: #0284c7;
         }
 
         .card-badge {
@@ -165,10 +165,10 @@
             border-left: 4px solid;
         }
 
-        .risk-item.low { border-left-color: #10b981; }
+        .risk-item.low { border-left-color: #16a34a; }
         .risk-item.medium { border-left-color: #f59e0b; }
         .risk-item.high { border-left-color: #ef4444; }
-        .risk-item.critical { border-left-color: #7c2d12; }
+        .risk-item.critical { border-left-color: #dc2626; }
 
         .risk-name {
             font-weight: 600;
@@ -180,10 +180,10 @@
             font-weight: 700;
         }
 
-        .risk-value.low { color: #10b981; }
+        .risk-value.low { color: #16a34a; }
         .risk-value.medium { color: #f59e0b; }
         .risk-value.high { color: #ef4444; }
-        .risk-value.critical { color: #7c2d12; }
+        .risk-value.critical { color: #dc2626; }
 
         /* Alerts */
         .alert-item {
@@ -228,7 +228,7 @@
         }
 
         .weather-item {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0284c7 0%, #0c4a6e 100%);
             color: white;
             padding: 15px;
             border-radius: 10px;
@@ -263,7 +263,7 @@
 
         .spinner {
             border: 4px solid #f3f4f6;
-            border-top: 4px solid #667eea;
+            border-top: 4px solid #0284c7;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -293,12 +293,12 @@
         }
 
         .btn-primary {
-            background: #02166c;
+            background: #0284c7;
             color: white;
         }
 
         .btn-primary:hover {
-            background: #5568d3;
+            background: #0c4a6e;
             transform: translateY(-2px);
         }
 
@@ -322,7 +322,7 @@
         .forecast-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            border-color: #667eea;
+            border-color: #0284c7;
         }
 
         .forecast-header {
@@ -334,7 +334,7 @@
 
         .district-name {
             font-weight: 700;
-            color: #2d3748;
+            color: #0284c7;
             font-size: 16px;
         }
 
@@ -633,8 +633,8 @@ function getRiskClass(probability) {
                         
                         document.getElementById('alerts-container').innerHTML = alertsHTML;
                     } else {
-                        document.getElementById('alerts-container').innerHTML = 
-                            '<p style="color: #10b981; text-align: center; padding: 20px;">No active alerts</p>';
+                        document.getElementById('alerts-container').innerHTML =
+                            '<p style="color: #16a34a; text-align: center; padding: 20px;">No active alerts</p>';
                     }
                 }
             } catch (error) {
@@ -694,8 +694,8 @@ function getRiskClass(probability) {
                         
                         document.getElementById('district-risks').innerHTML = districtHTML;
                     } else {
-                        document.getElementById('district-risks').innerHTML = 
-                            '<p style="color: #10b981; text-align: center; padding: 20px;">All districts at low risk</p>';
+                        document.getElementById('district-risks').innerHTML =
+                            '<p style="color: #16a34a; text-align: center; padding: 20px;">All districts at low risk</p>';
                     }
                 }
             } catch (error) {

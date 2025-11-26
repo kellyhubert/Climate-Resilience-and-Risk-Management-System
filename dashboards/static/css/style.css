@@ -1,13 +1,39 @@
 /* Rwanda Climate Risk System - Custom Styles */
 
 :root {
-    --primary: #667eea;
-    --secondary: #764ba2;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --dark: #2d3748;
-    --light: #f7fafc;
+    /* Natural Climate Palette - Primary Colors */
+    --primary: #0284c7;          /* Water blue */
+    --primary-dark: #0c4a6e;     /* Deep ocean */
+    --primary-light: #38bdf8;    /* Light water */
+
+    --secondary: #16a34a;        /* Healthy vegetation */
+    --secondary-dark: #15803d;   /* Deep forest */
+    --secondary-light: #4ade80;  /* Light vegetation */
+
+    /* Risk & Alert Levels */
+    --success: #16a34a;          /* Safe - Vegetation green */
+    --warning: #f59e0b;          /* Moderate - Amber */
+    --danger: #ef4444;           /* High risk - Red */
+    --critical: #dc2626;         /* Critical - Dark red */
+
+    /* Weather & Climate Conditions */
+    --ocean: #0c4a6e;            /* Deep ocean */
+    --water: #0284c7;            /* Water blue */
+    --vegetation: #16a34a;       /* Healthy vegetation */
+    --land: #ca8a04;             /* Dry land */
+    --desert: #ea580c;           /* Arid/drought */
+
+    /* Temperature Scale */
+    --temp-cold: #3b82f6;        /* Cold */
+    --temp-mild: #22c55e;        /* Mild */
+    --temp-warm: #f59e0b;        /* Warm */
+    --temp-hot: #ef4444;         /* Hot */
+
+    /* Neutrals */
+    --dark: #1f2937;
+    --gray: #6b7280;
+    --light: #f3f4f6;
+    --background: #f9fafb;
 }
 
 /* Global Styles */
