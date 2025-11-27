@@ -285,46 +285,221 @@ The Rwanda Climate Resilience and Risk Management System is a comprehensive AI-p
 - Status monitoring and health checks
 
 
-# Installation
- 
-### Prerequisites
-- Python 3.8 or higher  
-- pip (Python package manager)  
-- Git  
+# Installation & Setup
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+- **Python 3.11.5** (or Python 3.8+)
+- **pip** (Python package manager - comes with Python)
+- **Git** (for cloning the repository)
+- **Internet connection** (for downloading dependencies)
+
+### Verify Python Installation
+
+```bash
+# Check Python version
+python --version
+# Should show Python 3.8 or higher
+
+# Check pip version
+pip --version
+```
+
+---
+
+## Step-by-Step Setup Guide
 
 ### Step 1: Clone the Repository
 
-`git clone https://github.com/yourusername/Climate-Resilience-and-Risk-Management-System.git
-cd Climate-Resilience-and-Risk-Management-System`
+```bash
+git clone https://github.com/kellyhubert/Climate-Resilience-and-Risk-Management-System.git
+cd Climate-Resilience-and-Risk-Management-System
+```
 
-### Step 2: Create Virtual Environment (Recommended)
-`# Windows
+**Alternative:** Download ZIP from GitHub and extract it, then navigate to the folder in terminal/command prompt.
+
+---
+
+### Step 2: Create a Virtual Environment (Recommended)
+
+A virtual environment isolates project dependencies from your system Python installation.
+
+#### On Windows:
+```bash
 python -m venv venv
-venv\Scripts\activate`
+venv\Scripts\activate
+```
 
-`# Linux/Mac
+#### On Linux/Mac:
+```bash
 python3 -m venv venv
-source venv/bin/activate`
+source venv/bin/activate
+```
+
+**Note:** You should see `(venv)` prefix in your terminal prompt when the virtual environment is activated.
+
+---
 
 ### Step 3: Install Dependencies
-`pip install -r requirements.txt`
 
-### Step 4: Train the Models
+Install all required Python packages:
 
-`python scripts/train_all_models.py`
+```bash
+pip install -r requirements.txt
+```
 
-**This will:**
+**This will install:**
+- Flask (web framework)
+- Flask-CORS (API support)
+- scikit-learn (machine learning)
+- NumPy & Pandas (data processing)
+- Gunicorn (production server)
+- ReportLab & OpenPyXL (report generation)
+- Requests (API calls)
 
-Generate synthetic training data (4000-6000 samples per model)
-Train Random Forest and Gradient Boosting models
-Save trained models to **models/trained/**
-Display training accuracy and cross-validation scores
+**Troubleshooting:**
+- If you get permission errors on Windows, try: `pip install --user -r requirements.txt`
+- If you get SSL errors, try: `pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt`
+
+---
+
+### Step 4: Train the Machine Learning Models
+
+Before running the dashboard, you must train the climate risk prediction models:
+
+```bash
+python scripts/train_all_models.py
+```
+
+**What this does:**
+- Generates synthetic training data (4000-6000 samples per model)
+- Trains three ML models:
+  - **Landslide Risk Model** (Random Forest)
+  - **Flood Risk Model** (Gradient Boosting)
+  - **Drought Risk Model** (Random Forest)
+- Saves trained models to `models/trained/` directory
+- Displays training accuracy and cross-validation scores
+
+**Expected output:**
+```
+Training Landslide Model...
+Model accuracy: 92.5%
+Cross-validation score: 91.2%
+
+Training Flood Model...
+Model accuracy: 89.8%
+...
+```
+
+**Note:** This step may take 2-5 minutes depending on your computer.
+
+---
 
 ### Step 5: Start the Dashboard
-`cd dashboards
-python App.py`
 
-The dashboard will be available at: http://localhost:5000
+Run the Flask web application:
+
+```bash
+cd dashboards
+python App.py
+```
+
+**Expected output:**
+```
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.x.x:5000
+Press CTRL+C to quit
+```
+
+The dashboard will be available at: **http://localhost:5000** or **http://127.0.0.1:5000**
+
+---
+
+## Accessing the Application
+
+1. **Open your web browser** (Chrome, Firefox, Edge, Safari)
+2. **Navigate to:** `http://localhost:5000`
+3. **You should see** the Climate Risk Dashboard homepage
+
+---
+
+## Stopping the Application
+
+To stop the dashboard:
+1. Go to the terminal/command prompt where the app is running
+2. Press **CTRL+C** (Windows/Linux) or **CMD+C** (Mac)
+3. Deactivate virtual environment (optional): `deactivate`
+
+---
+
+## Quick Start Commands (Summary)
+
+```bash
+# 1. Clone and navigate
+git clone https://github.com/kellyhubert/Climate-Resilience-and-Risk-Management-System.git
+cd Climate-Resilience-and-Risk-Management-System
+
+# 2. Create and activate virtual environment
+python -m venv venv
+# Windows: venv\Scripts\activate
+# Linux/Mac: source venv/bin/activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Train models
+python scripts/train_all_models.py
+
+# 5. Start dashboard
+cd dashboards
+python App.py
+
+# 6. Open browser to http://localhost:5000
+```
+
+---
+
+## Troubleshooting Common Issues
+
+### Issue 1: "Python is not recognized"
+**Solution:** Add Python to your system PATH or use full path to Python executable.
+
+### Issue 2: "ModuleNotFoundError"
+**Solution:** Ensure virtual environment is activated and dependencies are installed:
+```bash
+pip install -r requirements.txt
+```
+
+### Issue 3: "Port 5000 already in use"
+**Solution:** Either:
+- Stop the application using port 5000
+- Or modify `App.py` to use a different port (e.g., 5001)
+
+### Issue 4: "No trained models found"
+**Solution:** Run the training script first:
+```bash
+python scripts/train_all_models.py
+```
+
+### Issue 5: Models folder doesn't exist
+**Solution:** Create the directory manually:
+```bash
+mkdir models/trained
+```
+
+---
+
+## Next Steps After Installation
+
+Once the application is running:
+
+1. **Explore the Dashboard** - View current climate risks for all 30 districts
+2. **Make Predictions** - Use the prediction tool with custom inputs
+3. **Check Alerts** - Monitor active climate warnings
+4. **View Analytics** - Analyze historical trends
+5. **Access API** - Use REST API endpoints (see API Documentation section)
 
 ## Usage
 ### Quick Start
